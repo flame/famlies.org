@@ -1,0 +1,3 @@
+- Remember to always clear the browser cache after making changes to CSS or JavaScript files to ensure that the latest versions are loaded.
+- You only need to wait for 1 second for the page to load after making changes to the CSS or JavaScript files. If you wait longer than 1 second, it may indicate that there is an issue with the code or the server.
+- Don't use a Python f-string if the string does not contain any variables. Instead, use a regular string to avoid unnecessary overhead.

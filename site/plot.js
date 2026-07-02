@@ -465,6 +465,12 @@ function getMaxThreads() {
     return result.length > 0 ? result[0].max_threads : -1;
 }
 
+function getMaxThreadsForMachine(machine) {
+    const query = 'SELECT MAX(threads) as max_threads FROM run WHERE machine = ?';
+    const result = queryDatabase(query, [machine]);
+    return result.length > 0 ? result[0].max_threads : -1;
+}
+
 function getAllMachines() {
     const query = 'SELECT DISTINCT machine FROM run ORDER BY machine ASC';
     return queryDatabase(query);
@@ -493,10 +499,9 @@ function loadMachineOverview() {
         // Get the git commit for the selected test branch
         const testGit = getLatestGitCommitForTag(selectedTestBranch);
         const refGit = getLatestGitCommitForTag(selectedReferenceBranch);
-        const maxThreads = getMaxThreads();
         const machines = getAllMachines();
 
-        if (!testGit || maxThreads === -1) {
+        if (!testGit) {
             showError('No data available for the selected branch');
             clearLoading();
             return;
@@ -504,6 +509,7 @@ function loadMachineOverview() {
 
         const machineCards = machines.map(m => {
             const machine = m.machine;
+            const maxThreads = getMaxThreadsForMachine(machine);
             return {
                 machine,
                 maxThreads,
@@ -525,6 +531,33 @@ function loadMachineOverview() {
     }
 }
 
+function getCardBackgroundColor(card) {
+    // Query comparison data to determine color based on % changes
+    const comparisonData = queryComparisonPlot(
+        card.testGitFull,
+        card.refGitFull,
+        card.machine,
+        card.maxThreads,
+        -1, -1, -1, -1
+    );
+
+    if (!comparisonData || comparisonData.length === 0) {
+        return '#f0f0f0'; // Light gray if no data
+    }
+
+    // Check rules in order of precedence
+    const hasLessThan_15 = comparisonData.some(item => item.percentChange < -15);
+    if (hasLessThan_15) return '#ffe6e6'; // Very light red
+
+    const hasLessThan_5 = comparisonData.some(item => item.percentChange < -5);
+    if (hasLessThan_5) return '#fff5e6'; // Very light yellow-orange
+
+    const hasGreaterThan5 = comparisonData.some(item => item.percentChange > 5);
+    if (hasGreaterThan5) return '#e6ffe6'; // Very light green
+
+    return '#e6f2ff'; // Very light blue
+}
+
 function renderMachineOverview(machineCards) {
     const grid = document.getElementById('machines-grid');
     grid.innerHTML = '';
@@ -533,6 +566,10 @@ function renderMachineOverview(machineCards) {
         const cardEl = document.createElement('div');
         cardEl.className = 'machine-card';
         cardEl.id = `machine-card-${card.machine}`;
+
+        // Get background color based on performance changes
+        const bgColor = getCardBackgroundColor(card);
+        cardEl.style.backgroundColor = bgColor;
 
         // Create card content with chart placeholder
         cardEl.innerHTML = `
@@ -777,7 +814,7 @@ function renderMachineDetail(machine, historicalData) {
                 contentHTML += `
                     <div class="dt-row">
                         <span class="dt-label">${dt}</span>
-                        <span class="dt-value">${groupedByDT[dt].toFixed(2)} GFLOP/s</span>
+                        <span class="dt-value">${groupedByDT[dt].toFixed(2)} GFLOP/s per core</span>
                     </div>
                 `;
             });
@@ -839,7 +876,7 @@ function renderChart(data) {
                     },
                     title: {
                         display: true,
-                        text: 'Performance (GFLOP/s)'
+                        text: 'Performance (GFLOP/s per core)'
                     }
                 }
             }
@@ -918,7 +955,7 @@ function generatePlot() {
                 type: 'line',
                 labels,
                 datasets: [{
-                    label: 'Performance (GFLOP/s)',
+                    label: 'Performance (GFLOP/s per core)',
                     data,
                     borderColor: 'rgb(75, 192, 192)',
                     backgroundColor: 'rgba(75, 192, 192, 0.1)',
@@ -959,7 +996,7 @@ function generatePlot() {
                 type: 'line',
                 labels: labels.map(String),
                 datasets: [{
-                    label: `Performance vs ${varyingDim.toUpperCase()} (GFLOP/s)`,
+                    label: `Performance vs ${varyingDim.toUpperCase()} (GFLOP/s per core)`,
                     data,
                     borderColor: 'rgb(153, 102, 255)',
                     backgroundColor: 'rgba(153, 102, 255, 0.1)',
@@ -1006,7 +1043,7 @@ function generatePlot() {
                 type: 'bar',
                 labels,
                 datasets: [{
-                    label: 'Performance (GFLOP/s)',
+                    label: 'Performance (GFLOP/s per core)',
                     data,
                     backgroundColor: colors.slice(0, labels.length)
                 }]

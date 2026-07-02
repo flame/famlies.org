@@ -18,7 +18,7 @@ def generate_testdata(
         lo: Low end of matrix size range
         step: Step size for incrementing matrix sizes
         model: Model dictionary with scaling functions and parameters
-        noise: Noise level in GFLOP/s
+        noise: Noise level in GFLOP/s per core
         scale: Overall scaling factor
 
     Returns:
@@ -35,7 +35,7 @@ def generate_testdata(
         "trsm_rnn_rrr",
     ]
     data_types = ["s", "d", "c", "z"]  # single, double, complex single, complex double
-    dt_scaling = {"s": 2.0, "d": 1.0, "c": 0.5, "z": 0.25}
+    dt_scaling = {"s": 2.0, "d": 1.0, "c": 2.0, "z": 1.0}
 
     # Get model parameters
     rpeak_per_core = model["rpeak_per_core"]
@@ -100,15 +100,15 @@ def main():
     # Default paths
     db_file = "perf.sqlite"
 
-    noise = 5.0  # GFLOP/s normally distributed noise
+    noise = 5.0  # GFLOP/s per core normally distributed noise
 
     machines = [
         {
             "machine": "Xeon v3 (1s 18c)",
             "threads": [1, 4, 8, 18],
-            "hi": [2000, 3000, 4000, 4000],
-            "lo": [400, 400, 400, 400],
-            "step": [400, 400, 400, 400],
+            "hi": [3000, 4000, 4000, 6000],
+            "lo": [120, 120, 120, 120],
+            "step": [120, 120, 120, 120],
             "config": "haswell",
             "model": {
                 "rpeak_per_core": 30.0,
@@ -118,7 +118,43 @@ def main():
                 "mnk_scaling": lambda m: 1.0 - 0.8 * exp(-m / 500.0),
                 "k_scaling": lambda k: 1.0 - 0.6 * exp(-k / 300.0),
             },
-        }
+        },
+        {
+            "machine": "AMD EPYC 7763 (1s 64c)",
+            "threads": [1, 4, 16, 32, 64],
+            "hi": [3000, 4000, 6000, 8000, 10000],
+            "lo": [120, 120, 120, 120, 120],
+            "step": [120, 120, 120, 120, 120],
+            "config": "zen3",
+            "model": {
+                "rpeak_per_core": 40.0,
+                "trmm_ratio": 0.9,
+                "trsm_ratio": 0.7,
+                "thread_scaling": lambda t: (
+                    1.0 if t < 16 else 0.9 - 0.4 * ((t - 16) / 112)
+                ),
+                "mnk_scaling": lambda m: 1.0 - 0.8 * exp(-m / 500.0),
+                "k_scaling": lambda k: 1.0 - 0.6 * exp(-k / 300.0),
+            },
+        },
+        {
+            "machine": "AMD EPYC 7763 (2s 128c)",
+            "threads": [128],
+            "hi": [10000],
+            "lo": [120],
+            "step": [120],
+            "config": "zen3",
+            "model": {
+                "rpeak_per_core": 40.0,
+                "trmm_ratio": 0.9,
+                "trsm_ratio": 0.7,
+                "thread_scaling": lambda t: (
+                    1.0 if t < 16 else 0.9 - 0.4 * ((t - 16) / 112)
+                ),
+                "mnk_scaling": lambda m: 1.0 - 0.8 * exp(-m / 500.0),
+                "k_scaling": lambda k: 1.0 - 0.6 * exp(-k / 300.0),
+            },
+        },
     ]
 
     commits = [
@@ -169,7 +205,9 @@ def main():
                 git_commit = commit["commit"]
                 git_tag = commit["tag"]
                 commit_scaling = commit["scaling"]
-                print(f"\nGenerating data for {machine['machine']} with {t} threads...")
+                print(
+                    f"\nGenerating data for {machine['machine']} with {t} threads @ {git_commit}..."
+                )
                 data = {
                     "operations": generate_testdata(
                         hi=hi,
@@ -191,10 +229,14 @@ def main():
                     m = op_dict["m"]
                     n = op_dict["n"]
                     k = op_dict["k"]
-                    gflops = op_dict["gflops"]
+                    dt = op_dict["dt"]
+                    t = data["threads"]
+                    gflops = op_dict["gflops"] * t
                     time = (2.0 * m * n * k) / (gflops * 1e9)  # Time in seconds
                     if any(x in op for x in ["gemmt", "syrk", "trmm", "trmm3", "trsm"]):
                         time *= 0.5  # Adjust for triangular operations
+                    if dt == "c" or dt == "z":
+                        time *= 4.0  # Adjust for complex data types
                     total_time += time
                 print(
                     f"Estimated total time for {len(data['operations'])} operations: {total_time / 3600:.2f} hours"

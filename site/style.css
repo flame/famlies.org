@@ -378,6 +378,66 @@ button {
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
+/* Color Legend Styles */
+.color-legend {
+    display: flex;
+    gap: 25px;
+    margin: 20px 0 30px 0;
+    padding: 15px 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    flex-wrap: wrap;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    color: #495057;
+}
+
+.legend-box {
+    width: 30px;
+    height: 30px;
+    border: 1.5px solid #333;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.legend-box.legend-green {
+    background-color: #e6ffe6;
+}
+
+.legend-box.legend-blue {
+    background-color: #e6f2ff;
+}
+
+.legend-box.legend-yellow {
+    background-color: #fff5e6;
+}
+
+.legend-box.legend-red {
+    background-color: #ffe6e6;
+}
+
+@media (max-width: 800px) {
+    .color-legend {
+        gap: 15px;
+        padding: 12px 15px;
+    }
+
+    .legend-item {
+        font-size: 13px;
+    }
+
+    .legend-box {
+        width: 25px;
+        height: 25px;
+    }
+}
+
 /* Machine Overview Styles */
 .machines-grid {
     display: grid;

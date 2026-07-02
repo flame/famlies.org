@@ -37,12 +37,12 @@ jobs:
         env:
           BOX_PASSWORD: ${{ secrets.BOX_PASSWORD }}
         run: |
-          curl -u damatthews@smu.edu:"$BOX_PASSWORD" --ftp-ssl "ftp://ftp.box.com/blis.famlies.org/perf.sqlite" --output perf.sqlite -v
+          curl -u damatthews@smu.edu:"$BOX_PASSWORD" --ssl-reqd "ftp://ftp.box.com/blis.famlies.org/perf.sqlite" --output site/perf.sqlite -v
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           # Upload entire repository
-          path: '.'
+          path: "site"
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
