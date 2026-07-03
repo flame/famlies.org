@@ -10,17 +10,17 @@ lo: [120, 120, 120]
 step: [120, 120, 120]
 config: "haswell"
 
-# Optional substitution variables (all default to -1 if not specified)
+# Optional substitution variables (values provided are defaults)
 # Input file: input.general.in
-dt: "dcs"                 # Datatypes: 's', 'd', 'c', 'z', or combinations like 'dcs'
-mstorage: "cgr"           # Matrix storage: 'c', 'g', 'r', or combinations
-vstorage: "crji"          # Vector storage: 'c', 'j', 'r', 'i', or combinations
+dt: "sdcz"                # Datatypes: 's', 'd', 'c', 'z', or combinations like 'sdcz'
+mstorage: "r"             # Matrix storage: 'c', 'g', 'r', or combinations
+vstorage: "r"             # Vector storage: 'c', 'j', 'r', 'i', or combinations
 repeat: "3"               # Number of repeats per experiment
 1m: "1"                   # Enable 1m implementations (0 or 1)
 native: "1"               # Enable native implementations (0 or 1)
 
 # Input file: input.operations.in
-level2: "1"               # Enable level-2 operations (0 or 1)
+level2: "0"               # Enable level-2 operations (0 or 1)
 level3: "1"               # Enable level-3 operations (0 or 1)
 
 # Any other user-defined fields will be stored as JSON in the "comment" field

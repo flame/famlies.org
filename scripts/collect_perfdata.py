@@ -16,16 +16,14 @@ import argparse
 import json
 import subprocess
 import sys
-from datetime import datetime
-from pathlib import Path
-
+import re
 import yaml
-
+from pathlib import Path
 
 substitution_vars = {
     "dt": "sdcz",
-    "mstorage": "rc",
-    "vstorage": "c",
+    "mstorage": "r",
+    "vstorage": "r",
     "repeat": 3,
     "1m": 1,
     "native": 1,
@@ -54,11 +52,21 @@ def parse_arguments():
         default=1,
         help="Number of concurrent jobs to pass to make (default: 1)",
     )
+    parser.add_argument(
+        "-s",
+        "--status",
+        help="YAML file to save the status of each git reference (most recent commit) after processing",
+    )
+    parser.add_argument(
+        "-a",
+        "--sbatch-args",
+        help="Additional arguments to pass to sbatch in the generated runjob.sh script",
+    )
 
     return parser.parse_args()
 
 
-def read_config_file(config_path):
+def read_config_file(config_path: str | Path) -> dict:
     """
     Read and parse the YAML configuration file.
 
@@ -140,7 +148,7 @@ def read_config_file(config_path):
     return config
 
 
-def extract_user_defined_keys(config):
+def extract_user_defined_keys(config: dict) -> str:
     """
     Extract user-defined keys (non-standard fields) from config.
 
@@ -153,7 +161,22 @@ def extract_user_defined_keys(config):
     Returns:
         str: JSON-formatted string of user-defined keys, or empty string
     """
-    standard_fields = {"machine", "threads", "hi", "lo", "step", "config"}
+    standard_fields = {
+        "machine",
+        "threads",
+        "hi",
+        "lo",
+        "step",
+        "config",
+        "dt",
+        "mstorage",
+        "vstorage",
+        "repeat",
+        "1m",
+        "native",
+        "level2",
+        "level3",
+    }
     user_keys = {k: v for k, v in config.items() if k not in standard_fields}
 
     if user_keys:
@@ -161,11 +184,12 @@ def extract_user_defined_keys(config):
     return ""
 
 
-def validate_git_ref(git_ref):
+def validate_git_ref(repo_dir: Path, git_ref: str) -> str | None:
     """
     Validate that the git reference exists in the repository.
 
     Args:
+        repo_dir (Path): Directory of the git repository
         git_ref (str): Git commit hash, tag, or branch name
 
     Returns:
@@ -176,6 +200,16 @@ def validate_git_ref(git_ref):
         result = subprocess.run(
             ["git", "rev-parse", "--short", git_ref],
             capture_output=True,
+            cwd=repo_dir,
+            text=True,
+            check=False,
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+        result = subprocess.run(
+            ["git", "rev-parse", "--short", f"origin/{git_ref}"],
+            capture_output=True,
+            cwd=repo_dir,
             text=True,
             check=False,
         )
@@ -189,21 +223,23 @@ def validate_git_ref(git_ref):
         return None
 
 
-def get_git_tag_for_commit(commit_hash):
+def get_git_tag_for_commit(repo_dir: Path, commit_hash: str) -> str | None:
     """
     Get the tag or branch name for a given commit hash.
 
     Args:
+        repo_dir (Path): Directory of the git repository
         commit_hash (str): Full commit hash
 
     Returns:
-        str: Tag name if commit is tagged, otherwise branch name or commit hash
+        str | None: Tag name if commit is tagged, otherwise None
     """
     try:
         # Try to get tag for this commit
         result = subprocess.run(
             ["git", "describe", "--tags", "--exact-match", commit_hash],
             capture_output=True,
+            cwd=repo_dir,
             text=True,
         )
         if result.returncode == 0:
@@ -211,76 +247,267 @@ def get_git_tag_for_commit(commit_hash):
     except Exception:
         pass
 
-    # Fall back to using the input reference or commit hash
-    return commit_hash
+    return None
 
 
-def clone_blis_repository(build_dir):
+def clone_blis_repository(repo_dir: Path) -> bool:
     """
     Clone the BLIS repository into the specified directory.
 
     Args:
-        build_dir (Path): Directory where BLIS will be cloned
+        repo_dir (Path): Directory where BLIS will be cloned
 
     Returns:
-        Path: Path to cloned BLIS directory, or None on failure
+        bool: True if successful, False otherwise
     """
-    blis_dir = build_dir / "blis"
-
     # Remove directory if it already exists
-    if blis_dir.exists():
-        print(f"  Removing existing BLIS directory: {blis_dir}")
-        subprocess.run(["rm", "-rf", str(blis_dir)], check=True)
+    if repo_dir.exists():
+        print(f"Removing existing BLIS directory: {repo_dir}")
+        subprocess.run(["rm", "-rf", str(repo_dir)], check=True)
 
-    print(f"  Cloning BLIS repository to {blis_dir}...")
+    print(f"Cloning BLIS repository to {repo_dir}...")
     try:
         result = subprocess.run(
-            ["git", "clone", "https://github.com/flame/blis", str(blis_dir)],
+            ["git", "clone", "https://github.com/flame/blis", str(repo_dir)],
             capture_output=True,
             text=True,
             check=False,
         )
         if result.returncode != 0:
-            print(f"  Error cloning repository: {result.stderr}")
-            return None
-        print("  Repository cloned successfully")
-        return blis_dir
+            print(f"Error cloning repository: {result.stderr}")
+            return False
+        result = subprocess.run(
+            ["git", "fetch", "--all", "--tags"],
+            capture_output=True,
+            cwd=repo_dir,
+            text=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            print(f"Error fetching branches and tags: {result.stderr}")
+            return False
+        print("Repository cloned successfully")
+        return True
     except Exception as e:
-        print(f"  Error during clone: {e}")
-        return None
+        print(f"Error during clone: {e}")
+        return False
 
 
-def checkout_git_ref(repo_dir, git_ref):
+def checkout_git_ref(repo_dir: Path, build_dir: Path, git_ref: str) -> bool:
     """
     Checkout the specified git reference (commit/tag/branch).
 
     Args:
         repo_dir (Path): Repository directory
+        build_dir (Path): Build directory
         git_ref (str): Git reference to check out
 
     Returns:
         bool: True if successful, False otherwise
     """
-    print(f"  Checking out {git_ref}...")
+
+    print(f"Checking out {git_ref} into {build_dir}...")
+    try:
+        # Remove directory if it already exists
+        if build_dir.exists():
+            print(f"Removing existing BLIS build directory: {build_dir}")
+            subprocess.run(["rm", "-rf", str(build_dir)], check=True)
+
+        build_dir.mkdir(parents=True, exist_ok=True)
+
+        result = subprocess.run(
+            f"git archive {git_ref} | tar -x -C {build_dir}",
+            capture_output=True,
+            cwd=repo_dir,
+            text=True,
+            shell=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            print(f"Error cloning repository: {result.stderr}")
+            return False
+        print("Repository checked out successfully")
+        return True
+    except Exception as e:
+        print(f"Error during checkout: {e}")
+        return False
+
+
+def get_compiler_version(cc: str) -> str | None:
+    """
+    Get the compiler vendor and version for the specified compiler.
+    This function is adapted from BLIS: https://github.com/flame/blis/blob/master/configure
+        Copyright (C) 2014, The University of Texas at Austin
+        See BSD3 license at https://github.com/flame/blis/blob/master/LICENSE or ../LICENSE
+
+    Args:
+        cc (str): Compiler command (e.g., gcc, clang, icc)
+
+    Returns:
+        str: Compiler vendor and version string, or None on failure
+    """
+
+    # Query the full vendor version string output. This includes the
+    # version number along with (potentially) a bunch of other textual
+    # clutter.
+    # NOTE: This maybe should use merged stdout/stderr rather than only
+    # stdout. But it works for now.
     try:
         result = subprocess.run(
-            ["git", "checkout", git_ref],
-            cwd=repo_dir,
+            [cc, "--version"],
             capture_output=True,
             text=True,
             check=False,
         )
-        if result.returncode != 0:
-            print(f"  Error checking out {git_ref}: {result.stderr}")
-            return False
-        print("  Checked out successfully")
-        return True
+        vendor_string = result.stdout.strip()
     except Exception as e:
-        print(f"  Error during checkout: {e}")
-        return False
+        print(f"Error getting compiler version: {e}")
+        return None
+
+    # Query the compiler "vendor" (ie: the compiler's simple name) and
+    # isolate the version number.
+    # The last part ({ read first rest ; echo $first ; }) is a workaround
+    # to OS X's egrep only returning the first match.
+    for vendor in [
+        "icc",
+        "gcc",
+        "clang",
+        "NVIDIA",
+        "emcc",
+        "pnacl",
+        "IBM",
+        "oneAPI",
+        "crosstool-NG",
+        "GCC",
+    ]:
+        if vendor in vendor_string:
+            cc_vendor = vendor
+            break
+    else:
+        cc_vendor = None
+
+    # AOCC version strings contain both "clang" and "AOCC" substrings, and
+    # so we have perform a follow-up check to make sure cc_vendor gets set
+    # correctly.
+    if "AOCC" in vendor_string:
+        cc_vendor = "aocc"
+
+    # Detect armclang, which doesn't have a nice, unambiguous, one-word tag
+    if "Arm C/C++/Fortran Compiler" in vendor_string:
+        cc_vendor = "armclang"
+
+    if not cc_vendor:
+        print(
+            f"Error: Unable to determine compiler vendor from string: {vendor_string}"
+        )
+        return None
+
+    # Begin parsing cc_vendor for the version string.
+
+    if cc_vendor == "GCC":
+        # Conda gcc sometimes has GCC (all caps) in the version string
+        cc_vendor = "gcc"
+
+    if cc_vendor == "crosstool-NG":
+        # Treat compilers built by crosstool-NG (for eg: conda) as gcc.
+        cc_vendor = "gcc"
+
+    if cc_vendor == "icc" or cc_vendor == "gcc":
+        try:
+            result = subprocess.run(
+                [cc, "-dumpversion"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            cc_version = result.stdout.strip()
+        except Exception as e:
+            print(f"Error getting compiler version: {e}")
+            return None
+
+    elif cc_vendor == "armclang":
+        # Treat armclang as regular clang.
+        cc_vendor = "clang"
+        result = re.search(r"based on LLVM ([0-9]+\.[0-9]+\.?[0-9]*)", vendor_string)
+        if not result:
+            print(
+                f"Error: Unable to parse armclang version from string: {vendor_string}"
+            )
+            return None
+        cc_version = result.group(1)
+
+    elif cc_vendor == "clang":
+        result = re.search(
+            r"(clang|LLVM) version ([0-9]+\.[0-9]+\.?[0-9]*)", vendor_string
+        )
+        if not result:
+            print(f"Error: Unable to parse clang version from string: {vendor_string}")
+            return None
+        cc_version = result.group(2)
+
+    elif cc_vendor == "aocc":
+        # Versions 2.0 and 2.1 had different version string formats from
+        # 2.2 and later, so we have to handle them separately.
+        # Examples:
+        # AOCC.LLVM.2.0.0.B191.2019_07_19 clang version 8.0.0 (CLANG: Jenkins AOCC_2_0_0-Build#191) (based on LLVM AOCC.LLVM.2.0.0.B191.2019_07_19)
+        # AOCC.LLVM.2.1.0.B1030.2019_11_12 clang version 9.0.0 (CLANG: Build#1030) (based on LLVM AOCC.LLVM.2.1.0.B1030.2019_11_12)
+        # AMD clang version 10.0.0 (CLANG: AOCC_2.2.0-Build#93 2020_06_25) (based on LLVM Mirror.Version.10.0.0)
+        # AMD clang version 11.0.0 (CLANG: AOCC_2.3.0-Build#85 2020_11_10) (based on LLVM Mirror.Version.11.0.0)
+        # AMD clang version 12.0.0 (CLANG: AOCC_3.0.0-Build#2 2020_11_05) (based on LLVM Mirror.Version.12.0.0)
+
+        if "AOCC.LLVM.2" in vendor_string:
+            # Grep for the AOCC.LLVM.x.y.z substring first, and then isolate the
+            # version number. Also, the string may contain multiple instances of
+            # the version number, so only use the first occurrence.
+            result = re.search(r"AOCC\.LLVM\.([0-9]+\.[0-9]+\.?[0-9]*)", vendor_string)
+            if not result:
+                print(
+                    f"Error: Unable to parse AOCC.LLVM version from string: {vendor_string}"
+                )
+                return None
+            cc_version = result.group(1)
+
+        else:
+            # Grep for the AOCC_x.y.z substring first, and then isolate the
+            # version number. As of this writing, these version strings don't
+            # include multiple instances of the version, but we nonetheless
+            # take only the first occurrence as a future-oriented safety
+            # measure.
+            result = re.search(r"AOCC_([0-9]+\.[0-9]+\.?[0-9]*)", vendor_string)
+            if not result:
+                print(
+                    f"Error: Unable to parse AOCC version from string: {vendor_string}"
+                )
+                return None
+            cc_version = result.group(1)
+
+    elif cc_vendor == "oneAPI":
+        # Treat Intel oneAPI's clang as clang, not icc.
+        cc_vendor = "clang"
+        result = re.search(r"[0-9]+\.[0-9]+\.[0-9]+\.?[0-9]*", vendor_string)
+        if not result:
+            print(f"Error: Unable to parse oneAPI version from string: {vendor_string}")
+            return None
+        cc_version = result.group(0)
+
+    elif cc_vendor == "NVIDIA":
+        result = re.search(r"[0-9]+\.[0-9]+-[0-9]+", vendor_string)
+        if not result:
+            print(f"Error: Unable to parse NVIDIA version from string: {vendor_string}")
+            return None
+        cc_version = result.group(0).replace("-", ".")
+
+    else:
+        result = re.search(r"[0-9]+\.[0-9]+\.?[0-9]*", vendor_string)
+        if not result:
+            print(f"Error: Unable to parse version from string: {vendor_string}")
+            return None
+        cc_version = result.group(0)
+
+    return f"{cc_vendor} {cc_version}"
 
 
-def configure_blis(blis_dir, config_name):
+def configure_blis(blis_dir: Path, config_name: str) -> str | None:
     """
     Run BLIS configure script with the specified configuration.
 
@@ -289,14 +516,14 @@ def configure_blis(blis_dir, config_name):
         config_name (str): Configuration name for -tomp
 
     Returns:
-        bool: True if successful, False otherwise
+        str: Compiler name and version if successful, None otherwise
     """
-    print(f"  Running configure with config: {config_name}...")
+    print(f"Running configure with config: {config_name}...")
     configure_script = blis_dir / "configure"
 
     if not configure_script.exists():
-        print(f"  Error: configure script not found at {configure_script}")
-        return False
+        print(f"Error: configure script not found at {configure_script}")
+        return None
 
     try:
         result = subprocess.run(
@@ -307,16 +534,32 @@ def configure_blis(blis_dir, config_name):
             check=False,
         )
         if result.returncode != 0:
-            print(f"  Error running configure: {result.stderr}")
-            return False
-        print("  Configuration successful")
-        return True
+            print(f"Error running configure: {result.stderr}")
+            return None
+        print("Configuration successful")
     except Exception as e:
-        print(f"  Error during configure: {e}")
-        return False
+        print(f"Error during configure: {e}")
+        return None
+
+    config_mk_path = blis_dir / "config.mk"
+    if not config_mk_path.exists():
+        print(f"Error: config.mk not found at {config_mk_path}")
+        return None
+
+    for line in config_mk_path.read_text().splitlines():
+        if line.startswith("CC"):
+            parts = line.split("=")
+            if len(parts) != 2:
+                print(f"Error: Invalid format for CC line: {line}")
+                return None
+            cc = parts[1].strip()
+            return get_compiler_version(cc)
+
+    print("CC variable not found in config.mk")
+    return None
 
 
-def build_blis(blis_dir, jobs=1):
+def build_blis(blis_dir: Path, jobs: int = 1) -> Path | None:
     """
     Build BLIS and run make check to generate test executable and verify library.
 
@@ -327,7 +570,7 @@ def build_blis(blis_dir, jobs=1):
     Returns:
         Path: Path to test executable if successful, None otherwise
     """
-    print(f"  Running make check with -j {jobs}...")
+    print(f"Running make check with -j {jobs}...")
     try:
         result = subprocess.run(
             ["make", "-j", str(jobs), "check"],
@@ -338,27 +581,29 @@ def build_blis(blis_dir, jobs=1):
             timeout=3600,  # 1 hour timeout for build
         )
         if result.returncode != 0:
-            print(f"  Error running make check: {result.stderr}")
+            print(f"Error running make check: {result.stderr}")
             return None
 
         # Verify test executable exists
         test_exec = blis_dir / "test_libblis.x"
         if not test_exec.exists():
-            print(f"  Error: test executable not found at {test_exec}")
+            print(f"Error: test executable not found at {test_exec}")
             return None
 
-        print("  Build successful, test executable created")
+        print("Build successful, test executable created")
         return test_exec
 
     except subprocess.TimeoutExpired:
-        print("  Error: make check timed out (exceeded 1 hour)")
+        print("Error: make check timed out (exceeded 1 hour)")
         return None
     except Exception as e:
-        print(f"  Error during build: {e}")
+        print(f"Error during build: {e}")
         return None
 
 
-def create_job_directory(commit_hash, config, blis_dir):
+def create_job_directory(
+    commit_hash: str, config: dict, blis_dir: Path, sbatch_args: str | None
+) -> Path | None:
     """
     Create a job directory named after the commit hash and generate runjob.sh.
 
@@ -366,31 +611,32 @@ def create_job_directory(commit_hash, config, blis_dir):
         commit_hash (str): Short git commit hash
         config (dict): Configuration dictionary
         blis_dir (Path): Path to BLIS repository
+        sbatch_args (str | None): Additional arguments to pass to sbatch
 
     Returns:
         Path: Path to job directory if successful, None otherwise
     """
     # Create directory in original working directory
     job_dir = Path.cwd() / commit_hash
-    print(f"  Creating job directory: {job_dir}")
+    print(f"Creating job directory: {job_dir}")
 
     try:
         job_dir.mkdir(exist_ok=True)
     except Exception as e:
-        print(f"  Error creating directory: {e}")
+        print(f"Error creating directory: {e}")
         return None
 
     # Read runjob.sh.in template
     template_file = Path(__file__).parent / "runjob.sh.in"
     if not template_file.exists():
-        print(f"  Error: Template file not found: {template_file}")
+        print(f"Error: Template file not found: {template_file}")
         return None
 
     try:
         with open(template_file, "r") as f:
             template_content = f.read()
     except Exception as e:
-        print(f"  Error reading template: {e}")
+        print(f"Error reading template: {e}")
         return None
 
     # Build substitution values
@@ -400,19 +646,22 @@ def create_job_directory(commit_hash, config, blis_dir):
     step_array = " ".join(str(s) for s in config["step"])
 
     scripts_dir = Path(__file__).parent
-    db_file = Path.cwd() / "perf.sqlite"
 
     # Perform substitutions
-    script_content = template_content.replace("@BLIS_DIR@", str(blis_dir))
-    script_content = script_content.replace("@THREADS_ARRAY@", threads_array)
-    script_content = script_content.replace("@LO_ARRAY@", lo_array)
-    script_content = script_content.replace("@HI_ARRAY@", hi_array)
-    script_content = script_content.replace("@STEP_ARRAY@", step_array)
-    script_content = script_content.replace("@MACHINE@", config["machine"])
-    script_content = script_content.replace("@CONFIG@", config["config"])
-    script_content = script_content.replace("@DB_FILE@", str(db_file))
-    script_content = script_content.replace("@GIT_COMMIT@", commit_hash)
-    script_content = script_content.replace("@SCRIPTS_DIR@", str(scripts_dir))
+    script_content = (
+        template_content.replace("@BLIS_DIR@", str(blis_dir))
+        .replace("@THREADS_ARRAY@", threads_array)
+        .replace("@LO_ARRAY@", lo_array)
+        .replace("@HI_ARRAY@", hi_array)
+        .replace("@STEP_ARRAY@", step_array)
+        .replace("@MACHINE@", config["machine"])
+        .replace("@CONFIG@", config["config"])
+        .replace("@COMMIT_DIR@", str(Path.cwd() / commit_hash))
+        .replace("@GIT_COMMIT@", commit_hash)
+        .replace("@SCRIPTS_DIR@", str(scripts_dir))
+        .replace("@NUM_THREAD_BLOCKS@", str(len(config["threads"])))
+        .replace("@SBATCH_ARGS@", "#SBATCH " + sbatch_args if sbatch_args else "")
+    )
 
     # Substitute optional variables
     for var in substitution_vars.keys():
@@ -425,86 +674,104 @@ def create_job_directory(commit_hash, config, blis_dir):
             f.write(script_content)
         # Make executable
         runjob_file.chmod(0o755)
-        print(f"  ✓ Generated batch script: {runjob_file}")
+        print(f"✓ Generated batch script: {runjob_file}")
         return job_dir
     except Exception as e:
-        print(f"  Error writing batch script: {e}")
+        print(f"Error writing batch script: {e}")
         return None
 
 
-def process_git_ref(git_ref, config, args, build_dir, user_comment):
+def process_git_ref(
+    git_ref: str,
+    commit_hash: str,
+    config: dict,
+    args: argparse.Namespace,
+    repo_dir: Path,
+    build_dir: Path,
+    user_comment: str,
+) -> bool:
     """
     Process a single git reference: clone, build, and generate batch script.
 
     Args:
         git_ref (str): Git reference to process
+        commit_hash (str): Resolved commit hash for the git reference
         config (dict): Configuration dictionary
         args (argparse.Namespace): Command line arguments
-        build_dir (Path): Build directory to use
+        repo_dir (Path): Directory of BLIS git repository
+        build_dir (Path): Top-level build directory to use
         user_comment (str): User-defined metadata comment
 
     Returns:
         bool: True if successful, False otherwise
     """
     print(f"\n{'=' * 60}")
-    print(f"Processing: {git_ref}")
+    print(f"Processing: {git_ref}{f' ({commit_hash})' if commit_hash else ''}")
     print(f"{'=' * 60}\n")
 
-    # Validate and resolve git reference
-    print(f"Validating git reference: {git_ref}")
-    commit_hash = validate_git_ref(git_ref)
-    if not commit_hash:
-        return False
+    git_tag = get_git_tag_for_commit(repo_dir, commit_hash) or git_ref
+    print(f"Commit hash: {commit_hash}")
+    print(f"Tag/Branch: {git_tag}")
 
-    git_tag = get_git_tag_for_commit(commit_hash)
-    print(f"  Commit hash: {commit_hash}")
-    print(f"  Tag/Branch: {git_tag}")
-
-    print("\nBuilding BLIS and preparing test environment")
-    print(f"{'=' * 40}\n")
+    print(f"\n{'=' * 60}")
+    print("Building BLIS and preparing test environment")
+    print(f"{'=' * 60}\n")
 
     # Clone BLIS repository into commit-specific build directory
     commit_build_dir = build_dir / commit_hash
 
-    print(f"  Build directory: {commit_build_dir}\n")
-
-    blis_repo_dir = clone_blis_repository(commit_build_dir)
-    if not blis_repo_dir:
-        print("Error: Failed to clone BLIS repository")
-        return False
+    print(f"Build directory: {commit_build_dir}")
 
     # Checkout requested git reference
     print()
-    if not checkout_git_ref(blis_repo_dir, git_ref):
+    if not checkout_git_ref(repo_dir, commit_build_dir, commit_hash):
         print("Error: Failed to checkout git reference")
         return False
 
     # Configure BLIS
     print()
-    if not configure_blis(blis_repo_dir, config["config"]):
-        print("Error: BLIS configuration failed")
+    compiler_info = configure_blis(commit_build_dir, config["config"])
+    if not compiler_info:
+        print("Error: Failed to configure BLIS")
         return False
+
+    job_config = json.loads(user_comment) if user_comment else {}
+    job_config["compiler"] = compiler_info
+    job_config["machine"] = config["machine"]
+    job_config["tag"] = git_tag
 
     # Build BLIS and generate test executable
     print()
-    test_exec = build_blis(blis_repo_dir, jobs=args.jobs)
+    test_exec = build_blis(commit_build_dir, jobs=args.jobs)
     if not test_exec:
         print("Error: BLIS build failed or test executable not created")
         return False
 
     # Create job directory and generate batch script
     print()
-    job_dir = create_job_directory(commit_hash, config, blis_repo_dir)
+    job_dir = create_job_directory(
+        commit_hash, config, commit_build_dir, args.sbatch_args
+    )
     if not job_dir:
         print("Error: Failed to create job directory or generate batch script")
         return False
 
+    job_config_path = job_dir / "config.yaml"
+    try:
+        with open(job_config_path, "w") as f:
+            yaml.safe_dump(job_config, f)
+    except Exception as e:
+        print(f"Error writing configuration metadata to '{job_config_path}': {e}")
+    else:
+        print(f"✓ Saved configuration metadata to: {job_config_path}")
+
     print("\nConfiguration Summary")
     print(f"{'=' * 40}")
-    print(f"  Git reference: {git_ref}")
+    print(f"  Git reference: {git_tag}")
     print(f"  Resolved commit: {commit_hash}")
     print(f"  Machine: {config['machine']}")
     print(f"  Config name: {config['config']}")
+    print(f"  Compiler info: {compiler_info}")
     if user_comment:
         print(f"  User metadata: {user_comment}")
 
@@ -517,7 +784,7 @@ def process_git_ref(git_ref, config, args, build_dir, user_comment):
     print("    ./runjob.sh")
     print()
     print("  Or submit to SLURM:")
-    print(f"    sbatch {job_dir}/runjob.sh")
+    print(f"    sbatch {job_dir}/runjob.sh\n")
 
     return True
 
@@ -526,7 +793,7 @@ def main():
     """Main entry point."""
     args = parse_arguments()
 
-    print(f"\n{'=' * 60}")
+    print(f"{'=' * 60}")
     print("BLIS Performance Data Collector")
     print(f"{'=' * 60}\n")
 
@@ -545,19 +812,54 @@ def main():
     if user_comment:
         print(f"  User-defined metadata: {user_comment}")
 
-    # Create a temporary build directory
+    print(f"\n{'=' * 60}")
+    print("Clone BLIS repository and preparing build environment")
+    print(f"{'=' * 60}\n")
     build_dir = Path.cwd() / "blis_build"
+    repo_dir = build_dir / "blis"
+    if not clone_blis_repository(repo_dir):
+        print("Error: Failed to clone BLIS repository")
+        sys.exit(1)
 
     # Process each git reference
     print(f"\n{'=' * 60}")
     print(f"Processing {len(args.git_refs)} git reference(s)")
-    print(f"{'=' * 60}")
+    print(f"{'=' * 60}\n")
 
     failed_refs = []
     successful_refs = []
 
+    status_data = {}
+    if args.status:
+        status_file = Path(args.status)
+        if status_file.exists():
+            try:
+                with open(status_file, "r") as f:
+                    status_data = yaml.safe_load(f) or {}
+            except Exception as e:
+                print(f"Error reading status file '{status_file}': {e}")
+                sys.exit(1)
+
     for git_ref in args.git_refs:
-        if process_git_ref(git_ref, config, args, build_dir, user_comment):
+        print(f"Validating git reference: {git_ref}")
+        if ":" in git_ref:
+            git_ref, commit_hash = git_ref.split(":", 1)
+            commit_hash = validate_git_ref(repo_dir, commit_hash)
+        else:
+            commit_hash = validate_git_ref(repo_dir, git_ref)
+
+        if not commit_hash:
+            failed_refs.append(git_ref)
+            continue
+
+        if git_ref in status_data and status_data[git_ref] == commit_hash:
+            print(f"Skipping {git_ref}: already processed with commit {commit_hash}")
+            successful_refs.append(git_ref)
+            continue
+
+        if process_git_ref(
+            git_ref, commit_hash, config, args, repo_dir, build_dir, user_comment
+        ):
             successful_refs.append(git_ref)
         else:
             failed_refs.append(git_ref)
@@ -565,18 +867,15 @@ def main():
     # Print summary
     print(f"\n{'=' * 60}")
     print("Summary")
-    print(f"{'=' * 60}")
-    print(f"  Successful: {len(successful_refs)}")
+    print(f"{'=' * 60}\n")
+    print(f"Successful: {len(successful_refs)}")
     for ref in successful_refs:
-        print(f"    ✓ {ref}")
+        print(f"  ✓ {ref}")
     if failed_refs:
-        print(f"  Failed: {len(failed_refs)}")
+        print(f"Failed: {len(failed_refs)}")
         for ref in failed_refs:
-            print(f"    ✗ {ref}")
+            print(f"  ✗ {ref}")
         sys.exit(1)
-
-    print(f"\n  Timestamp: {datetime.now().isoformat()}")
-    print()
 
 
 if __name__ == "__main__":

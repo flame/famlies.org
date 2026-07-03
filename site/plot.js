@@ -10,6 +10,9 @@ let progressInterval = null;
 // Card chart instances
 let cardChartInstances = {};
 
+// Historical chart instances (organized by operation and thread count)
+let operationChartInstances = {};
+
 // Branch/Tag selection
 let selectedTestBranch = 'master';
 let selectedReferenceBranch = 'v2.1';
@@ -458,13 +461,6 @@ function populateBranchSelectors() {
     }
 }
 
-
-function getMaxThreads() {
-    const query = 'SELECT MAX(threads) as max_threads FROM run';
-    const result = queryDatabase(query);
-    return result.length > 0 ? result[0].max_threads : -1;
-}
-
 function getMaxThreadsForMachine(machine) {
     const query = 'SELECT MAX(threads) as max_threads FROM run WHERE machine = ?';
     const result = queryDatabase(query, [machine]);
@@ -476,14 +472,20 @@ function getAllMachines() {
     return queryDatabase(query);
 }
 
-function getMachineHistoricalData(machine) {
-    const query = `
+function getMachineHistoricalData(machine, tag = null) {
+    let query = `
         SELECT DISTINCT op, threads, dt, git, timestamp, gflops
         FROM run
-        WHERE machine = ?
-        ORDER BY op ASC, threads DESC, dt ASC, timestamp DESC
-    `;
-    return queryDatabase(query, [machine]);
+        WHERE machine = ?`;
+    const params = [machine];
+
+    if (tag !== null && tag !== '') {
+        query += ` AND tag = ?`;
+        params.push(tag);
+    }
+
+    query += ` ORDER BY op ASC, threads DESC, dt ASC, timestamp DESC`;
+    return queryDatabase(query, params);
 }
 
 // Machine Overview Rendering
@@ -531,31 +533,65 @@ function loadMachineOverview() {
     }
 }
 
-function getCardBackgroundColor(card) {
-    // Query comparison data to determine color based on % changes
-    const comparisonData = queryComparisonPlot(
-        card.testGitFull,
-        card.refGitFull,
-        card.machine,
-        card.maxThreads,
-        -1, -1, -1, -1
-    );
+function getColor(machine, operation, dt, threads, testGit, refGit) {
+    let whereClause = `WHERE machine = ? AND git = ?`;
+    let testParams = [machine, testGit];
+    if (operation) {
+        whereClause += ` AND op = ?`;
+        testParams.push(operation);
+    }
+    if (dt) {
+        whereClause += ` AND dt = ?`;
+        testParams.push(dt);
+    }
+    if (threads) {
+        whereClause += ` AND threads = ?`;
+        testParams.push(threads);
+    }
+    const query = `
+        SELECT threads, dt, MAX(gflops) as max_gflops
+        FROM run
+        ${whereClause}
+        GROUP BY threads, dt`;
 
-    if (!comparisonData || comparisonData.length === 0) {
+    const testResult = queryDatabase(query, testParams);
+    const refResult = queryDatabase(query, testParams.map((param, index) => index === 1 ? refGit : param));
+
+    // If either is missing, return gray
+    if (testResult === null ||
+        refResult === null ||
+        testResult.length == 0 ||
+        refResult.length == 0) {
         return '#f0f0f0'; // Light gray if no data
     }
 
-    // Check rules in order of precedence
-    const hasLessThan_15 = comparisonData.some(item => item.percentChange < -15);
-    if (hasLessThan_15) return '#ffe6e6'; // Very light red
+    const okay = testResult.reduce((acc, row) => {
+            return acc && refResult.find(r => r.threads === row.threads && r.dt === row.dt);
+        }, Infinity);
+    if (!okay) {
+        return '#f0f0f0'; // Light gray if no data
+    }
 
-    const hasLessThan_5 = comparisonData.some(item => item.percentChange < -5);
-    if (hasLessThan_5) return '#fff5e6'; // Very light yellow-orange
+    const minPercentChange = testResult.reduce((acc, row) => {
+            const testMaxGflops = row.max_gflops;
+            const refMaxGflops = refResult.find(r => r.threads === row.threads && r.dt === row.dt).max_gflops;
+            return Math.min(acc, ((testMaxGflops / refMaxGflops) - 1) * 100);
+        }, Infinity);
+    const maxPercentChange = testResult.reduce((acc, row) => {
+            const testMaxGflops = row.max_gflops;
+            const refMaxGflops = refResult.find(r => r.threads === row.threads && r.dt === row.dt).max_gflops;
+            return Math.max(acc, ((testMaxGflops / refMaxGflops) - 1) * 100);
+        }, -Infinity);
 
-    const hasGreaterThan5 = comparisonData.some(item => item.percentChange > 5);
-    if (hasGreaterThan5) return '#e6ffe6'; // Very light green
-
+    // Apply color rules from machine cards
+    if (minPercentChange < -15) return '#ffe6e6'; // Very light red
+    if (minPercentChange < -5) return '#fff5e6'; // Very light yellow-orange
+    if (maxPercentChange > 5) return '#e6ffe6'; // Very light green
     return '#e6f2ff'; // Very light blue
+}
+
+function getCardBackgroundColor(card) {
+    return getColor(card.machine, null, null, null, card.testGitFull, card.refGitFull) || '#f0f0f0';
 }
 
 function renderMachineOverview(machineCards) {
@@ -587,12 +623,27 @@ function renderMachineOverview(machineCards) {
                     </div>
                 </div>
             </div>
-            <div class="machine-card-chart">
-                <canvas id="card-chart-${card.machine}"></canvas>
+            <div class="machine-card-chart-grid">
+                <div class="machine-card-chart">
+                    <div class="chart-card-title">float32 (s)</div>
+                    <canvas id="card-chart-${card.machine}-s"></canvas>
+                </div>
+                <div class="machine-card-chart">
+                    <div class="chart-card-title">float64 (d)</div>
+                    <canvas id="card-chart-${card.machine}-d"></canvas>
+                </div>
+                <div class="machine-card-chart">
+                    <div class="chart-card-title">complex64 (c)</div>
+                    <canvas id="card-chart-${card.machine}-c"></canvas>
+                </div>
+                <div class="machine-card-chart">
+                    <div class="chart-card-title">complex128 (z)</div>
+                    <canvas id="card-chart-${card.machine}-z"></canvas>
+                </div>
             </div>
         `;
 
-        cardEl.onclick = () => loadMachineDetail(card.machine);
+        cardEl.onclick = () => loadMachineDetail(card.machine, selectedTestBranch);
         grid.appendChild(cardEl);
 
         // Render chart for this card
@@ -601,112 +652,117 @@ function renderMachineOverview(machineCards) {
 }
 
 function renderCardChart(card) {
-    try {
-        // Query comparison data: percentage change from reference to test branch
-        const comparisonData = queryComparisonPlot(
-            card.testGitFull,
-            card.refGitFull,
-            card.machine,
-            card.maxThreads,
-            -1, -1, -1, -1
-        );
+    // Query comparison data: percentage change from reference to test branch
+    for (const dt of ['s', 'd', 'c', 'z']) {
+        try {
+            const comparisonData = queryComparisonPlot(
+                card.testGitFull,
+                card.refGitFull,
+                card.machine,
+                card.maxThreads,
+                dt, -1, -1, -1
+            );
 
-        if (!comparisonData || comparisonData.length === 0) {
-            return; // No data for this machine
-        }
+            if (!comparisonData || comparisonData.length === 0) {
+                return; // No data for this machine
+            }
 
-        // Extract labels and data
-        const labels = comparisonData.map(item => item.op);
-        const data = comparisonData.map(item => item.percentChange);
+            // Extract labels and data
+            const labels = comparisonData.map(item => item.op);
+            const data = comparisonData.map(item => item.percentChange);
 
-        const colors = [
-            'rgb(255, 99, 132)',
-            'rgb(54, 162, 235)',
-            'rgb(255, 206, 86)',
-            'rgb(75, 192, 192)',
-            'rgb(153, 102, 255)',
-            'rgb(255, 159, 64)',
-            'rgb(201, 203, 207)',
-            'rgb(255, 193, 7)'
-        ];
+            const colors = [
+                'rgb(255, 99, 132)',
+                'rgb(54, 162, 235)',
+                'rgb(255, 206, 86)',
+                'rgb(75, 192, 192)',
+                'rgb(153, 102, 255)',
+                'rgb(255, 159, 64)',
+                'rgb(201, 203, 207)',
+                'rgb(255, 193, 7)'
+            ];
 
-        const canvasId = `card-chart-${card.machine}`;
-        const canvasEl = document.getElementById(canvasId);
+            const canvasId = `card-chart-${card.machine}-${dt}`;
+            const canvasEl = document.getElementById(canvasId);
 
-        if (!canvasEl) return;
+            if (!canvasEl) return;
 
-        const ctx = canvasEl.getContext('2d');
+            const ctx = canvasEl.getContext('2d');
 
-        // Destroy existing chart instance if it exists
-        if (cardChartInstances[canvasId]) {
-            cardChartInstances[canvasId].destroy();
-        }
+            // Destroy existing chart instance if it exists
+            if (cardChartInstances[canvasId]) {
+                cardChartInstances[canvasId].destroy();
+            }
 
-        const chartConfig = {
-            type: 'bar',
-            data: {
-                labels,
-                datasets: [{
-                    label: '% Change',
-                    data,
-                    backgroundColor: colors.slice(0, labels.length),
-                    borderWidth: 1,
-                    borderColor: 'rgba(0, 0, 0, 0.1)'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        enabled: true,
-                        callbacks: {
-                            label: function(context) {
-                                return context.parsed.y.toFixed(1) + '%';
+            const chartConfig = {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: '% Change',
+                        data,
+                        backgroundColor: colors.slice(0, labels.length),
+                        borderWidth: 1,
+                        borderColor: 'rgba(0, 0, 0, 0.1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    aspectRatio: 1.8,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            enabled: true,
+                            callbacks: {
+                                label: function(context) {
+                                    return context.parsed.y.toFixed(1) + '%';
+                                }
                             }
                         }
-                    }
-                },
-                scales: {
-                    y: {
-                        min: -25,
-                        max: 25,
-                        beginAtZero: true,
-                        ticks: {
-                            font: {
-                                size: 10
+                    },
+                    scales: {
+                        y: {
+                            min: -25,
+                            max: 25,
+                            beginAtZero: true,
+                            ticks: {
+                                font: {
+                                    size: 10
+                                },
+                                callback: function(value) {
+                                    return value.toFixed(0) + '%';
+                                }
                             },
-                            callback: function(value) {
-                                return value.toFixed(0) + '%';
+                            title: {
+                                display: true,
+                                text: '% Change',
+                                font: {
+                                    size: 10
+                                }
                             }
                         },
-                        title: {
-                            display: true,
-                            text: '% Change',
-                            font: {
-                                size: 10
+                        x: {
+                            ticks: {
+                                font: {
+                                    size: 8
+                                },
+                                maxRotation: 90,
+                                minRotation: 90,
+                                padding: -100,
+                                z: 1
                             }
-                        }
-                    },
-                    x: {
-                        ticks: {
-                            font: {
-                                size: 10
-                            },
-                            maxRotation: 45,
-                            minRotation: 0
                         }
                     }
                 }
-            }
-        };
+            };
 
-        cardChartInstances[canvasId] = new Chart(ctx, chartConfig);
-    } catch (error) {
-        console.warn(`Error rendering card chart for ${card.machine}:`, error);
+            cardChartInstances[canvasId] = new Chart(ctx, chartConfig);
+        } catch (error) {
+            console.warn(`Error rendering card chart for ${card.machine} datatype ${dt}:`, error);
+        }
     }
 }
 
@@ -720,12 +776,12 @@ function switchViewToOverview() {
 }
 
 // Machine Detail View
-function loadMachineDetail(machine) {
+function loadMachineDetail(machine, tag = null) {
     try {
         currentMachine = machine;
         showLoading();
 
-        const historicalData = getMachineHistoricalData(machine);
+        const historicalData = getMachineHistoricalData(machine, tag || selectedTestBranch);
 
         if (historicalData.length === 0) {
             showError('No historical data available for this machine');
@@ -733,7 +789,12 @@ function loadMachineDetail(machine) {
             return;
         }
 
-        renderMachineDetail(machine, historicalData);
+        // Get git commits and max threads for color calculation
+        const testGit = getLatestGitCommitForTag(selectedTestBranch);
+        const refGit = getLatestGitCommitForTag(selectedReferenceBranch);
+        const maxThreads = getMaxThreadsForMachine(machine);
+
+        renderMachineDetail(machine, historicalData, testGit, refGit, maxThreads);
         clearLoading();
 
         // Switch to detail view
@@ -744,11 +805,214 @@ function loadMachineDetail(machine) {
     }
 }
 
-function renderMachineDetail(machine, historicalData) {
+// Plugin to draw reference line on chart
+const referenceLinePlugin = {
+    id: 'referenceLine',
+    afterDatasetsDraw(chart) {
+        if (!chart.customRefMaxGflops) return;
+
+        const ctx = chart.ctx;
+        const yScale = chart.scales.y;
+        const xScale = chart.scales.x;
+
+        const yPixel = yScale.getPixelForValue(chart.customRefMaxGflops);
+
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255, 0, 0, 0.6)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(xScale.left, yPixel);
+        ctx.lineTo(xScale.right, yPixel);
+        ctx.stroke();
+        ctx.restore();
+    }
+};
+
+// Render all historical charts for a specific operation and thread count
+function renderChartsForThreadGroup(machine, operation, threads, container, tag = null) {
+    try {
+        // Query to get all data types for this operation and thread count
+        // Group by timestamp to get one data point per commit
+        let query = `
+            SELECT dt, timestamp, MAX(gflops) as gflops
+            FROM run
+            WHERE machine = ? AND op = ? AND threads = ?`;
+        const params = [machine, operation, threads];
+
+        if (tag !== null && tag !== '') {
+            query += ` AND tag = ?`;
+            params.push(tag);
+        }
+
+        query += ` GROUP BY dt, timestamp
+                  ORDER BY dt ASC, timestamp ASC`;
+        const rows = queryDatabase(query, params);
+
+        if (!rows || rows.length === 0) {
+            return;
+        }
+
+        // Group data by data type
+        const groupedByDT = {};
+        rows.forEach(row => {
+            if (!groupedByDT[row.dt]) {
+                groupedByDT[row.dt] = [];
+            }
+            groupedByDT[row.dt].push(row);
+        });
+
+        // Create grid container
+        const gridContainer = document.createElement('div');
+        gridContainer.className = 'charts-grid';
+
+        // Get unique colors for data types
+        const colors = {
+            's': '#667eea',
+            'd': '#f093fb',
+            'c': '#4facfe',
+            'z': '#fa709a'
+        };
+
+        const dt_names = {
+            's': 'float32 (s)',
+            'd': 'float64 (d)',
+            'c': 'complex64 (c)',
+            'z': 'complex128 (z)'
+        };
+
+        const testGit = getLatestGitCommitForTag(selectedTestBranch);
+        const refGit = getLatestGitCommitForTag(selectedReferenceBranch);
+
+        // Create a chart for each data type
+        Object.keys(groupedByDT).sort((a, b) => 'sdcz'.indexOf(a) - 'sdcz'.indexOf(b)).forEach(dt => {
+            const dtRows = groupedByDT[dt];
+
+            // Create chart card
+            const card = document.createElement('div');
+            card.className = 'chart-card';
+            card.style.backgroundColor = getColor(machine, operation, dt, threads, testGit, refGit) || '#f0f0f0';
+
+            // Create title
+            const title = document.createElement('div');
+            title.className = 'chart-card-title';
+            title.textContent = `${dt_names[dt]}`;
+            card.appendChild(title);
+
+            // Create canvas
+            const canvas = document.createElement('canvas');
+            const chartId = `chart-${operation}-${threads}-${dt}`.replace(/\s+/g, '-');
+            canvas.id = chartId;
+            card.appendChild(canvas);
+
+            gridContainer.appendChild(card);
+
+            // Query for reference branch max gflops for this operation/dt/threads combo
+            const refQuery = `
+                SELECT MAX(gflops) as max_gflops
+                FROM run
+                WHERE machine = ? AND op = ? AND dt = ? AND threads = ? AND tag = ?`;
+            const refParams = [machine, operation, dt, threads, selectedReferenceBranch];
+            const refResult = queryDatabase(refQuery, refParams);
+            const refMaxGflops = refResult && refResult.length > 0 ? refResult[0].max_gflops : null;
+
+            // Prepare data for chart
+            const labels = dtRows.map(r => {
+                // Handle both Unix timestamps (numbers) and ISO date strings
+                let date;
+                if (typeof r.timestamp === 'number') {
+                    date = new Date(r.timestamp * 1000);
+                } else {
+                    date = new Date(r.timestamp);
+                }
+                return date.toLocaleDateString();
+            });
+            const data = dtRows.map(r => r.gflops);
+
+            // Create chart instance
+            const ctx = canvas.getContext('2d');
+            const color = colors[dt] || '#667eea';
+
+            const chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: dt.toUpperCase(),
+                        data: data,
+                        borderColor: color,
+                        backgroundColor: color + '20',
+                        borderWidth: 2,
+                        fill: true,
+                        pointRadius: 3,
+                        pointBackgroundColor: color,
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 1,
+                        tension: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: false
+                        },
+                        referenceLine: {
+                            enabled: refMaxGflops !== null
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: refMaxGflops !== null ? Math.max(...data, refMaxGflops) * 1.05 : undefined,
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toFixed(1);
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'GFLOP/s per core'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: false
+                            }
+                        }
+                    }
+                },
+                plugins: [referenceLinePlugin]
+            });
+
+            // Set the reference max gflops on the chart instance
+            if (refMaxGflops !== null) {
+                chartInstance.customRefMaxGflops = refMaxGflops;
+            }
+
+            // Store chart instance
+            const key = `${operation}-${threads}-${dt}`;
+            if (!operationChartInstances[operation]) {
+                operationChartInstances[operation] = {};
+            }
+            operationChartInstances[operation][key] = chartInstance;
+        });
+
+        container.appendChild(gridContainer);
+    } catch (error) {
+        console.error('Error rendering charts for thread group:', error);
+    }
+}
+
+function renderMachineDetail(machine, historicalData, testGit, refGit, maxThreads) {
     // Set header info
-    document.getElementById('detail-machine-name').textContent = `${machine} - Historical Data`;
+    document.getElementById('detail-machine-name').textContent = `${machine}`;
     document.getElementById('detail-machine-info').textContent =
-        `Showing performance history across all operations, thread counts, and data types`;
+        `Click on any operation to view performance history`;
 
     // Group data by operation
     const groupedByOp = {};
@@ -780,6 +1044,11 @@ function renderMachineDetail(machine, historicalData) {
 
         const headerEl = document.createElement('div');
         headerEl.className = 'operation-header';
+
+        // Calculate background color for this operation
+        const bgColor = getColor(machine, op, null, null, testGit, refGit);
+        headerEl.style.backgroundColor = bgColor;
+
         headerEl.innerHTML = `
             <span>${op}</span>
             <span class="expand-icon">▼</span>
@@ -788,46 +1057,63 @@ function renderMachineDetail(machine, historicalData) {
         const contentEl = document.createElement('div');
         contentEl.className = 'operation-content';
 
-        // Build content with threads and data types
-        let contentHTML = '';
-        Object.keys(groupedByThreads).sort((a, b) => {
+        // Create content with charts for each thread level
+        const threadKeys = Object.keys(groupedByThreads).sort((a, b) => {
             const aThreads = parseInt(a.split(' ')[0]);
             const bThreads = parseInt(b.split(' ')[0]);
             return bThreads - aThreads; // Descending
-        }).forEach(threadKey => {
-            const threadData = groupedByThreads[threadKey];
-
-            // Group by data type
-            const groupedByDT = {};
-            threadData.forEach(row => {
-                if (!groupedByDT[row.dt]) {
-                    groupedByDT[row.dt] = row.gflops;
-                } else {
-                    groupedByDT[row.dt] = Math.max(groupedByDT[row.dt], row.gflops);
-                }
-            });
-
-            contentHTML += `<div class="thread-data-group">
-                <div class="thread-label">${threadKey}</div>`;
-
-            Object.keys(groupedByDT).sort().forEach(dt => {
-                contentHTML += `
-                    <div class="dt-row">
-                        <span class="dt-label">${dt}</span>
-                        <span class="dt-value">${groupedByDT[dt].toFixed(2)} GFLOP/s per core</span>
-                    </div>
-                `;
-            });
-
-            contentHTML += '</div>';
         });
 
-        contentEl.innerHTML = contentHTML;
+        // Store thread info for lazy rendering
+        const threadGroupElements = {};
+
+        threadKeys.forEach(threadKey => {
+            const threads = parseInt(threadKey.split(' ')[0]);
+
+            // Create thread group container
+            const threadGroupEl = document.createElement('div');
+            threadGroupEl.className = 'thread-chart-group';
+            threadGroupEl.setAttribute('data-threads', threads);
+
+            const threadLabelEl = document.createElement('div');
+            threadLabelEl.className = 'thread-charts-label';
+            threadLabelEl.textContent = threadKey;
+            threadGroupEl.appendChild(threadLabelEl);
+
+            // Don't render charts yet - will be done on first expand
+            threadGroupElements[threads] = threadGroupEl;
+            contentEl.appendChild(threadGroupEl);
+        });
+
+        // Track expansion state and rendering
+        let isExpanded = false;
+        let chartsRendered = false;
 
         // Toggle expand/collapse
         headerEl.onclick = () => {
-            contentEl.classList.toggle('expanded');
-            headerEl.querySelector('.expand-icon').classList.toggle('expanded');
+            if (!isExpanded) {
+                // Expanding
+                if (!chartsRendered) {
+                    // First time expanding - render charts
+                    threadKeys.forEach(threadKey => {
+                        const threads = parseInt(threadKey.split(' ')[0]);
+                        const threadGroupEl = threadGroupElements[threads];
+
+                        // Render charts for this thread group
+                        renderChartsForThreadGroup(machine, op, threads, threadGroupEl, selectedTestBranch);
+                    });
+                    chartsRendered = true;
+                }
+
+                contentEl.classList.add('expanded');
+                headerEl.querySelector('.expand-icon').classList.add('expanded');
+                isExpanded = true;
+            } else {
+                // Collapsing - just hide, don't destroy charts
+                contentEl.classList.remove('expanded');
+                headerEl.querySelector('.expand-icon').classList.remove('expanded');
+                isExpanded = false;
+            }
         };
 
         opElement.appendChild(headerEl);

@@ -1,7 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=blis_perf
 #SBATCH --output=blis_perf.log
-#SBATCH --time=12:00:00
+#SBATCH --array=1-@NUM_THREAD_BLOCKS@
+@SBATCH_ARGS@
 
 # ====================================================================
 # BLIS Performance Data Collection Batch Script
@@ -12,9 +13,8 @@
 # collect_perfdata.py itself.
 # ====================================================================
 
-set -e
-
 # Configuration
+COMMIT_DIR="@COMMIT_DIR@"
 BLIS_DIR="@BLIS_DIR@"
 THREADS_ARRAY=(@THREADS_ARRAY@)
 LO_ARRAY=(@LO_ARRAY@)
@@ -22,9 +22,16 @@ HI_ARRAY=(@HI_ARRAY@)
 STEP_ARRAY=(@STEP_ARRAY@)
 MACHINE="@MACHINE@"
 CONFIG="@CONFIG@"
-DB_FILE="@DB_FILE@"
 GIT_COMMIT="@GIT_COMMIT@"
 SCRIPTS_DIR="@SCRIPTS_DIR@"
+
+# Check if running as a SLURM array job
+if [ ! -z "$SLURM_ARRAY_TASK_ID" ]; then
+    THREADS_ARRAY=(${THREADS_ARRAY[$SLURM_ARRAY_TASK_ID-1]})
+    LO_ARRAY=(${LO_ARRAY[$SLURM_ARRAY_TASK_ID-1]})
+    HI_ARRAY=(${HI_ARRAY[$SLURM_ARRAY_TASK_ID-1]})
+    STEP_ARRAY=(${STEP_ARRAY[$SLURM_ARRAY_TASK_ID-1]})
+fi
 
 # Substitution variables for input file generation
 DT="@DT@"
@@ -51,12 +58,12 @@ fi
 echo "=========================================="
 echo "BLIS Performance Data Collection"
 echo "=========================================="
+echo "Output directory: $COMMIT_DIR"
 echo "BLIS directory: $BLIS_DIR"
 echo "Test executable: $TEST_EXEC"
 echo "Machine: $MACHINE"
 echo "Config: $CONFIG"
 echo "Git commit: $GIT_COMMIT"
-echo "Database: $DB_FILE"
 echo ""
 
 # Loop over thread configurations
@@ -88,21 +95,42 @@ for i in "${!THREADS_ARRAY[@]}"; do
 
     # Process input.operations.in
     echo "Generating input.operations..."
-    sed -e "s/@level2@/$LEVEL2/g" \
-        -e "s/@level3@/$LEVEL3/g" \
-        "$SCRIPTS_DIR/input.operations.in" > input.operations
+    sed -e "s/[01]        # Utility/0        # Utility/g" \
+        -e "s/[01]        # Level-1v kernels/0        # Level-1v kernels/g" \
+        -e "s/[01]        # Level-1m/0        # Level-1m/g" \
+        -e "s/[01]        # Level-1f kernels/0        # Level-1f kernels/g" \
+        -e "s/[01]        # Level-2/$LEVEL2        # Level-2/g" \
+        -e "s/[01]        # Level-3 micro-kernels/0        # Level-3 micro-kernels/g" \
+        -e "s/[01]        # Level-3$/$LEVEL3        # Level-3$/g" \
+        -e "s/[01]        # Level-4/0        # Level-4/g" \
+        -e "s/[01]        # gemm$/1        # gemm/g" \
+        -e "s/[01]        # gemmt/1        # gemmt/g" \
+        -e "s/[01]        # hemm/1        # hemm/g" \
+        -e "s/[01]        # herk/1        # herk/g" \
+        -e "s/[01]        # her2k/1        # her2k/g" \
+        -e "s/[01]        # symm/0        # symm/g" \
+        -e "s/[01]        # syrk/0        # syrk/g" \
+        -e "s/[01]        # syr2k/0        # syr2k/g" \
+        -e "s/[01]        # trmm$/0        # trmm/g" \
+        -e "s/[01]        # trmm3/1        # trmm3/g" \
+        -e "s/[01]        # trsm/1        # trsm/g" \
+        "$BLIS_DIR/testsuite/input.operations" > input.operations
 
     # Run the test suite
     echo "Running test suite..."
-    if "$TEST_EXEC" | tee output.testsuite; then
-        echo "Test suite completed successfully"
+    if [ "x$VERBOSE" = "x1" ]; then
+        "$TEST_EXEC" | tee $COMMIT_DIR/output.testsuite.$THREADS
     else
-        echo "Warning: Test suite exited with non-zero status"
+        "$TEST_EXEC" > $COMMIT_DIR/output.testsuite.$THREADS
     fi
 
-    # Import results into database
-    echo "Importing results into database..."
-    python3 "$SCRIPTS_DIR/import_testsuite.py" output.testsuite "$DB_FILE" "$MACHINE"
+    if grep -q "Exiting normally." $COMMIT_DIR/output.testsuite.$THREADS; then
+        echo "Test suite completed successfully"
+    else
+        echo "Warning: Test suite exited abnormally"
+    fi
+
+    #rm -f input.general input.operations
 
     echo ""
 done
