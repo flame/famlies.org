@@ -1,0 +1,46 @@
+name: Deploy to famlies.org
+
+on:
+  # Runs on pushes targeting the default branch
+  push:
+    branches: ["main"]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "deploy"
+  cancel-in-progress: false
+
+jobs:
+  # Single deploy job since we're just deploying
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Write SSH keys
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          SSH_CONFIG: ${{ secrets.SSH_CONFIG }}
+        run: |
+          install -m 600 -D /dev/null ~/.ssh/id_ed25519
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          echo "$SSH_CONFIG" > ~/.ssh/config
+      - name: Download database
+        env:
+          BOX_USERNAME: ${{ secrets.BOX_USERNAME }}
+          BOX_PASSWORD: ${{ secrets.BOX_PASSWORD }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          curl -u "$BOX_USERNAME":"$BOX_PASSWORD" --ssl-reqd "$DATABASE_URL" --output site/perf.sqlite -v
+      - name: Deploy to famlies.org via SSH
+        run: |
+          rsync -avz -e "ssh -i ~/.ssh/id_ed25519" site/ famlies.org:/blis/

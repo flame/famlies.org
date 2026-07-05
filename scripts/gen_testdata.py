@@ -4,7 +4,7 @@ from math import exp
 from operator import itemgetter
 import random
 
-from import_testsuite import create_database, insert_data
+from upload_perfdata import insert_data, open_database
 
 
 def generate_testdata(
@@ -197,7 +197,7 @@ def main():
     ]
 
     print(f"\nCreating/connecting to database {db_file}...")
-    conn = create_database(db_file)
+    conn = open_database(db_file)
 
     for machine in machines:
         for t, hi, lo, step in zip(*itemgetter("threads", "hi", "lo", "step")(machine)):
