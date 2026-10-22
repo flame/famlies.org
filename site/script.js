@@ -308,6 +308,14 @@ function switchCiteTab(id, format) {
     if (content) content.hidden = false;
 }
 
+function copyDOI(btn, doi) {
+    navigator.clipboard.writeText(doi).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = orig; }, 2000);
+    }).catch(() => {});
+}
+
 function copyText(id, format) {
     const panel = document.getElementById(id);
     if (!panel) return;
@@ -402,14 +410,20 @@ function createPublicationElement(entry) {
     const bibtex = escapeHtml(entry.raw || '');
     const apa = escapeHtml(formatAPA(entry));
 
+    const doi = fields.doi && !fields.doi.startsWith('http') ? fields.doi : '';
+    const copyDoiBtn = doi
+        ? `<button class="cite-btn" onclick="copyDOI(this, '${doi}')">Copy DOI</button>`
+        : '';
+
     let linksHTML = '';
     if (links.length > 0) {
         linksHTML = '<div class="publication-links">' +
             links.map(link => `<a href="${link.url}" class="pub-link" target="_blank">${link.text}</a>`).join('') +
+            copyDoiBtn +
             `<button class="cite-btn" onclick="toggleCite('${citeId}')">Cite</button>` +
             '</div>';
     } else {
-        linksHTML = `<div class="publication-links"><button class="cite-btn" onclick="toggleCite('${citeId}')">Cite</button></div>`;
+        linksHTML = `<div class="publication-links">${copyDoiBtn}<button class="cite-btn" onclick="toggleCite('${citeId}')">Cite</button></div>`;
     }
 
     const citePanel = `
