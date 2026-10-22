@@ -242,6 +242,14 @@ function generatePublicationLinks(fields) {
                 text: 'View Paper',
                 url: url
             });
+            // Also surface arXiv preprint when eprint field is present
+            if (fields.eprint && fields.archiveprefix &&
+                fields.archiveprefix.toLowerCase().includes('arxiv')) {
+                links.push({
+                    text: 'arXiv Preprint',
+                    url: `https://arxiv.org/abs/${fields.eprint}`
+                });
+            }
         }
     } else if (fields.doi) {
         // Generate DOI link
