@@ -120,7 +120,12 @@ function renderCalendar(widgetEl, year, month, events, panelEl) {
         String(today.getDate()).padStart(2, '0')
     ].join('-');
 
-    const eventDates = new Set(events.map(e => e.date));
+    // Map date string → events array for title hints
+    const eventsByDate = new Map();
+    events.forEach(e => {
+        if (!eventsByDate.has(e.date)) eventsByDate.set(e.date, []);
+        eventsByDate.get(e.date).push(e);
+    });
 
     const MONTHS = ['January','February','March','April','May','June',
                     'July','August','September','October','November','December'];
@@ -134,11 +139,17 @@ function renderCalendar(widgetEl, year, month, events, panelEl) {
 
     for (let d = 1; d <= daysInMonth; d++) {
         const ds = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        const hasEvent = eventDates.has(ds);
-        const isToday  = ds === todayStr;
+        const dayEvents = eventsByDate.get(ds) || [];
+        const hasEvent  = dayEvents.length > 0;
+        const isToday   = ds === todayStr;
         const cls = ['cal-day', hasEvent && 'has-event', isToday && 'is-today'].filter(Boolean).join(' ');
+
+        const titleHint = hasEvent
+            ? `<span class="cal-event-title">${dayEvents[0].title}</span>`
+            : '';
         const dot = hasEvent ? `<span class="event-dot"></span>` : '';
-        gridHTML += `<div class="${cls}" data-date="${ds}">${d}${dot}</div>`;
+
+        gridHTML += `<div class="${cls}" data-date="${ds}"><span class="cal-day-num">${d}</span>${titleHint}${dot}</div>`;
     }
 
     widgetEl.innerHTML = `
