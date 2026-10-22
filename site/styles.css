@@ -1301,6 +1301,162 @@ main {
     flex-wrap: wrap;
 }
 
+/* ============================================
+   CALENDAR WIDGET
+   ============================================ */
+
+.calendar-widget {
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px 24px;
+    max-width: 380px;
+    margin: 0 auto 28px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.calendar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+
+.cal-month-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    letter-spacing: 0.3px;
+}
+
+.cal-nav-btn {
+    background: none;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--accent-color);
+    padding: 1px 10px 3px;
+    transition: all 0.2s ease;
+}
+
+.cal-nav-btn:hover {
+    background: rgba(0, 102, 204, 0.08);
+    border-color: var(--accent-color);
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.cal-day-header {
+    text-align: center;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--secondary-color);
+    padding: 4px 0 8px;
+    letter-spacing: 0.5px;
+}
+
+.cal-day {
+    text-align: center;
+    font-size: 0.88rem;
+    color: var(--primary-color);
+    border-radius: 6px;
+    position: relative;
+    min-height: 34px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 0;
+    user-select: none;
+}
+
+.cal-day.empty {
+    pointer-events: none;
+}
+
+.cal-day.has-event {
+    cursor: pointer;
+    font-weight: 700;
+    color: var(--accent-color);
+}
+
+.cal-day.has-event:hover {
+    background: rgba(0, 102, 204, 0.1);
+}
+
+.cal-day.is-today {
+    background: var(--accent-color);
+    color: var(--white);
+    font-weight: 700;
+}
+
+.event-dot {
+    display: block;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--accent-color);
+    margin-top: 1px;
+}
+
+.cal-day.is-today .event-dot {
+    background: rgba(255, 255, 255, 0.75);
+}
+
+/* ============================================
+   EVENTS PANEL (scrollable frame)
+   ============================================ */
+
+.events-panel {
+    height: 560px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    padding: 8px 0;
+}
+
+.events-panel .event-card {
+    margin: 0 16px 16px;
+    width: auto;
+}
+
+.events-panel #events-list > .event-card:first-child {
+    margin-top: 16px;
+}
+
+.today-marker {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 24px;
+    margin: 4px 0;
+}
+
+.today-marker span {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--accent-color);
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+
+.today-marker::before,
+.today-marker::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--accent-color);
+    opacity: 0.3;
+}
+
 /* News List */
 
 .news-list {
