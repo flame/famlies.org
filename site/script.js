@@ -208,11 +208,119 @@ function parseBibTeX(bibContent) {
         entries.push({
             key: key,
             type: type,
-            fields: fields
+            fields: fields,
+            raw: match[0].trim()
         });
     }
 
     return entries;
+}
+
+function escapeHtml(text) {
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function formatAuthorsAPA(authorStr) {
+    if (!authorStr) return '';
+    const particles = new Set(['van', 'de', 'von', 'di', 'del', 'der', 'la', 'le', 'du']);
+    const authors = authorStr.split(' and ').map(a => {
+        a = a.trim();
+        const commaIdx = a.indexOf(',');
+        if (commaIdx > -1) {
+            const last = a.slice(0, commaIdx).trim();
+            const first = a.slice(commaIdx + 1).trim();
+            const initials = first.split(/\s+/).filter(Boolean)
+                .map(n => n[0].toUpperCase() + '.').join(' ');
+            return `${last}, ${initials}`;
+        }
+        const parts = a.split(/\s+/);
+        if (parts.length === 1) return a;
+        let familyStart = parts.length - 1;
+        for (let i = 0; i < parts.length - 1; i++) {
+            if (particles.has(parts[i].toLowerCase())) { familyStart = i; break; }
+        }
+        const family = parts.slice(familyStart).join(' ');
+        const initials = parts.slice(0, familyStart).map(n => n[0].toUpperCase() + '.').join(' ');
+        return initials ? `${family}, ${initials}` : family;
+    });
+    if (authors.length === 1) return authors[0];
+    if (authors.length === 2) return authors.join(' & ');
+    return authors.slice(0, -1).join(', ') + ', & ' + authors[authors.length - 1];
+}
+
+function formatAPA(entry) {
+    const { fields } = entry;
+    const authors = formatAuthorsAPA(fields.author || '');
+    const year = fields.year || 'n.d.';
+    const title = fields.title || '';
+    const journal = fields.journal || fields.booktitle || '';
+    const volume = fields.volume || '';
+    const number = fields.number || '';
+    const pages = fields.pages ? fields.pages.replace(/--/g, '–') : '';
+    const doi = fields.doi || '';
+    const eprint = fields.eprint || '';
+    const archiveprefix = (fields.archiveprefix || '').toLowerCase();
+
+    const parts = [];
+    if (authors) parts.push(authors);
+    parts.push(`(${year}).`);
+    if (title) parts.push(`${title}.`);
+
+    if (journal) {
+        let journalPart = journal;
+        if (volume) {
+            journalPart += `, ${volume}`;
+            if (number) journalPart += `(${number})`;
+        }
+        if (pages) journalPart += `, ${pages}`;
+        journalPart += '.';
+        parts.push(journalPart);
+    } else if (eprint && archiveprefix.includes('arxiv')) {
+        parts.push(`arXiv preprint arXiv:${eprint}.`);
+    }
+
+    if (doi) {
+        parts.push(doi.startsWith('http') ? doi : `https://doi.org/${doi}`);
+    } else if (!journal && fields.url && !fields.url.includes('arxiv.org') && fields.url.startsWith('http')) {
+        parts.push(fields.url);
+    }
+
+    return parts.join(' ');
+}
+
+function toggleCite(id) {
+    const panel = document.getElementById(id);
+    if (panel) panel.hidden = !panel.hidden;
+}
+
+function switchCiteTab(id, format) {
+    const panel = document.getElementById(id);
+    if (!panel) return;
+    panel.querySelectorAll('.cite-tab').forEach(t => t.classList.remove('active'));
+    panel.querySelectorAll('.cite-content').forEach(c => { c.hidden = true; });
+    const tab = panel.querySelector(`.cite-tab[data-format="${format}"]`);
+    const content = panel.querySelector(`.cite-content[data-format="${format}"]`);
+    if (tab) tab.classList.add('active');
+    if (content) content.hidden = false;
+}
+
+function copyText(id, format) {
+    const panel = document.getElementById(id);
+    if (!panel) return;
+    const content = panel.querySelector(`.cite-content[data-format="${format}"]`);
+    const text = content ? (content.querySelector('pre') || content.querySelector('p') || content).textContent.trim() : '';
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = content && content.querySelector('.copy-btn');
+        if (btn) {
+            const orig = btn.textContent;
+            btn.textContent = 'Copied!';
+            setTimeout(() => { btn.textContent = orig; }, 2000);
+        }
+    }).catch(() => {});
 }
 
 // Generate publication links (URL, DOI, arXiv)
@@ -290,12 +398,35 @@ function createPublicationElement(entry) {
         metaText = year;
     }
 
+    const citeId = `cite-${entry.key.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+    const bibtex = escapeHtml(entry.raw || '');
+    const apa = escapeHtml(formatAPA(entry));
+
     let linksHTML = '';
     if (links.length > 0) {
         linksHTML = '<div class="publication-links">' +
             links.map(link => `<a href="${link.url}" class="pub-link" target="_blank">${link.text}</a>`).join('') +
+            `<button class="cite-btn" onclick="toggleCite('${citeId}')">Cite</button>` +
             '</div>';
+    } else {
+        linksHTML = `<div class="publication-links"><button class="cite-btn" onclick="toggleCite('${citeId}')">Cite</button></div>`;
     }
+
+    const citePanel = `
+        <div class="cite-panel" id="${citeId}" hidden>
+            <div class="cite-tabs">
+                <button class="cite-tab active" data-format="bibtex" onclick="switchCiteTab('${citeId}', 'bibtex')">BibTeX</button>
+                <button class="cite-tab" data-format="apa" onclick="switchCiteTab('${citeId}', 'apa')">APA</button>
+            </div>
+            <div class="cite-content" data-format="bibtex">
+                <pre>${bibtex}</pre>
+                <button class="copy-btn" onclick="copyText('${citeId}', 'bibtex')">Copy</button>
+            </div>
+            <div class="cite-content" data-format="apa" hidden>
+                <p>${apa}</p>
+                <button class="copy-btn" onclick="copyText('${citeId}', 'apa')">Copy</button>
+            </div>
+        </div>`;
 
     const html = `
         <div class="publication-item">
@@ -307,6 +438,7 @@ function createPublicationElement(entry) {
                 ${authors ? `<p class="publication-authors"><strong>Authors:</strong> ${authors}</p>` : ''}
                 ${abstract ? `<p class="publication-abstract">${abstract}</p>` : ''}
                 ${linksHTML}
+                ${citePanel}
             </div>
         </div>
     `;

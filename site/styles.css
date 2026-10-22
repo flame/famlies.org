@@ -931,6 +931,97 @@ main {
     box-shadow: 0 6px 12px rgba(0, 102, 204, 0.2);
 }
 
+.cite-btn {
+    display: inline-block;
+    padding: 8px 16px;
+    background-color: transparent;
+    color: var(--accent-color);
+    border: 1.5px solid var(--accent-color);
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    vertical-align: top;
+}
+
+.cite-btn:hover {
+    background-color: rgba(0, 102, 204, 0.08);
+}
+
+.cite-panel {
+    margin-top: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.cite-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--light-bg);
+}
+
+.cite-tab {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 8px 18px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--secondary-color);
+    transition: all 0.2s ease;
+    margin-bottom: -1px;
+}
+
+.cite-tab.active {
+    color: var(--accent-color);
+    border-bottom-color: var(--accent-color);
+}
+
+.cite-tab:hover {
+    color: var(--primary-color);
+}
+
+.cite-content {
+    padding: 14px 16px 12px;
+    position: relative;
+}
+
+.cite-content pre {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.75rem;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-all;
+    color: var(--primary-color);
+    margin: 0 0 10px;
+}
+
+.cite-content p {
+    font-size: 0.9rem;
+    line-height: 1.7;
+    color: var(--primary-color);
+    margin: 0 0 10px;
+}
+
+.copy-btn {
+    background-color: var(--accent-color);
+    color: var(--white);
+    border: none;
+    padding: 5px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: background-color 0.2s ease;
+}
+
+.copy-btn:hover {
+    background-color: #0052a3;
+}
+
 .publication-tags {
     display: flex;
     flex-wrap: wrap;
@@ -1748,7 +1839,8 @@ main {
         gap: 0.8rem;
     }
 
-    .pub-link {
+    .pub-link,
+    .cite-btn {
         width: 100%;
         text-align: center;
     }
@@ -1927,7 +2019,8 @@ main {
         font-size: 0.85rem;
     }
 
-    .pub-link {
+    .pub-link,
+    .cite-btn {
         padding: 6px 12px;
         font-size: 0.8rem;
     }
