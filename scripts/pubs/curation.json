@@ -1,0 +1,149 @@
+{
+  "_comment": "Hand curation applied by build_db.py. Regexes are case-insensitive and matched against the paper title. 'exclude_titles' drops papers; 'include_titles' forces a paper in for the listed person even if an automatic rule would drop it. 'person_rules': min_year drops OpenAlex records of that person before that year (records from merged author profiles); require_pi_coauthor keeps an OpenAlex record of that person only if another FAMLIES PI is also an author (or the title is in include_titles). 'merge': lists of titles that are versions of one paper. 'group_rules': rules for every person in a group; 'fields' keeps an OpenAlex record for that person only if its OpenAlex research field is listed (filters out same-name authors in other disciplines).",
+  "exclude_openalex_types": [
+    "reference-entry",
+    "paratext",
+    "dataset",
+    "erratum",
+    "retraction",
+    "peer-review",
+    "supplementary-materials",
+    "grant",
+    "standard",
+    "libguides",
+    "book-review",
+    "letter"
+  ],
+  "exclude_titles": [
+    "^General/Program Co-Chairs",
+    "^Contributors$",
+    "Powered by NICT",
+    "JST・京大機械翻訳",
+    "Strassenアルゴリズム"
+  ],
+  "include_titles": {
+    "myers": [
+      "Finding near-optimal configurations in product lines by random sampling",
+      "Appearances of the Birthday Paradox in High Performance Computing",
+      "The Science of Programming High-Performance Linear Algebra Libraries",
+      "The science of deriving dense linear algebra algorithms",
+      "Rapid Development of High-Performance Linear Algebra Libraries",
+      "Deriving dense linear algebra libraries"
+    ]
+  },
+  "person_rules": {
+    "matthews": {
+      "min_year": 2005
+    },
+    "myers": {
+      "require_pi_coauthor": true
+    },
+    "parikh": {
+      "min_year": 2005
+    },
+    "kim": {
+      "min_year": 2005
+    }
+  },
+  "merge": [
+    [
+      "Deriving dense linear algebra libraries",
+      "Deriving Linear Algebra Libraries"
+    ],
+    [
+      "Distributed Memory Tensor Computations: Formalizing Distributions, Redistributions, and Algorithm Derivation",
+      "Distributed tensor computations: formalizing distributions, redistributions, and algorithm derivation"
+    ]
+  ],
+  "group_rules": {
+    "collaborator": {
+      "fields": [
+        "Computer Science",
+        "Mathematics",
+        "Engineering",
+        "Physics and Astronomy",
+        "Decision Sciences"
+      ]
+    }
+  },
+  "relevance": {
+    "_comment": "A publication is kept only if it is FLAME/BLIS/PLAPACK-related or cites such a paper (per OpenAlex references). Related = listed on the FLAME publication page or the FAMLIES BibTeX files ('core_sources'), or 'keywords' (case-sensitive regex) matches its title, abstract or venue. 'openalex_queries' find related papers by other authors (see fetch_core.py). 'keep_titles' overrides. Papers with a person from 'exempt_groups' are always kept.",
+    "keywords": "\\b(FLAME|libflame|PLAPACK|POOCLAPACK|BLIS|BLISlab)\\b|Formal Linear Algebra Methods? Environment",
+    "core_sources": [
+      "flame",
+      "famlies"
+    ],
+    "openalex_queries": [
+      "PLAPACK",
+      "libflame",
+      "POOCLAPACK",
+      "BLIS BLAS",
+      "BLIS matrix",
+      "Formal Linear Algebra Methods Environment"
+    ],
+    "keep_titles": [],
+    "exempt_groups": [
+      "pi",
+      "staff"
+    ]
+  },
+  "coauthors": {
+    "_comment": "find_coauthors.py: people (other than those in people.json) with at least min_papers distinct publications with a FAMLIES PI/co-PI since 'since'. 'aliases' maps extra OpenAlex IDs of the same person to their main ID; 'patterns' overrides the generated name regexes; 'exclude' lists main IDs to leave out. 'names' overrides display names.",
+    "min_papers": 3,
+    "since": 1997,
+    "aliases": {
+      "A5109595877": "A5012806004",
+      "A5125357106": "A5086284706",
+      "A5062153332": "A5018163531"
+    },
+    "patterns": {
+      "A5012806004": [
+        "\\benrique\\b.*\\bquintana"
+      ],
+      "A5086284706": [
+        "\\bgregorio\\b.*\\bquintana"
+      ]
+    },
+    "exclude": [],
+    "names": {
+      "A5012806004": "Enrique S. Quintana-Ortí",
+      "A5086284706": "Gregorio Quintana-Ortí"
+    }
+  },
+  "famlies_related": {
+    "_comment": "Marks publications for the 'FAMLIES Related' button: any paper by 'people'; any paper that is itself a PLAPACK/FLAME/Elemental/ROTE/FAMLIES paper (from 'sources', or 'keywords' matches title/abstract/venue, or a 'guarded' pattern matches together with its 'requires' context); and any paper citing one of those that is in the database. 'not_core_titles': entries of the FLAME publication list that are not themselves FLAME-related (off-topic chemistry/physics); they still count if they qualify otherwise.",
+    "people": [
+      "rvdg"
+    ],
+    "sources": [
+      "flame",
+      "famlies"
+    ],
+    "keywords": "\\b(FLAME|libflame|PLAPACK|POOCLAPACK|ROTE|FAMLIES)\\b|Formal Linear Algebra Methods? Environment",
+    "guarded": [
+      {
+        "pattern": "\\bElemental\\b",
+        "requires": "(?i)matri(x|ces)|linear algebra|distributed"
+      }
+    ],
+    "not_core_titles": [
+      "Non-orthogonal spin-adaptation of coupled cluster methods",
+      "Non-orthogonal Spin-adaptation and Application to Coupled Cluster",
+      "Finite Element Modeling of Electromagnetic Radiation",
+      "Doktorov Recurrence Equations",
+      "Parallelization Strategy for Large-Scale Vibronic Coupling"
+    ]
+  },
+  "famlies_grants": {
+    "_comment": "Grants funding FAMLIES (NSF OAC-2513927 SMU, OAC-2513928 UT Austin, OAC-2513929 CMU; started 2026-03-26). check_grants.py searches PDFs and OpenAlex full text for the award numbers; 'acknowledged_titles' adds papers confirmed by hand. (The CSSI 2026 poster on KiltHub lists the awards in its funding metadata.)",
+    "award_ids": [
+      "2513927",
+      "2513928",
+      "2513929"
+    ],
+    "since": 2026,
+    "acknowledged_titles": [
+      "Framework for Advanced (Multi)Linear Infrastructure in Engineering and Science"
+    ]
+  }
+}

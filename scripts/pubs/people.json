@@ -1,0 +1,310 @@
+{
+  "_comment": "FAMLIES PIs and co-PIs (group 'pi'), other FAMLIES personnel (group 'staff') and FLAME/BLIS collaborators (group 'collaborator'). Frequent coauthors (group 'coauthor') are generated into coauthors.json by find_coauthors.py. openalex: author IDs to harvest (OpenAlex often splits one person over several IDs). short: label used on badges. name_patterns: regexes (case-insensitive) that identify the person in an author list, used to tag papers and to vet imported entries. scholar: Google Scholar profile user= id, if known.",
+  "people": [
+    {
+      "key": "rvdg",
+      "name": "Robert A. van de Geijn",
+      "short": "van de Geijn",
+      "role": "PI",
+      "institution": "University of Texas at Austin",
+      "orcid": "0009-0004-6434-8492",
+      "openalex": [
+        "A5061722569",
+        "A5142172978",
+        "A5029026956"
+      ],
+      "name_patterns": [
+        "van\\s*de\\s*geijn",
+        "\\bgeijn\\b"
+      ],
+      "scholar": "",
+      "group": "pi"
+    },
+    {
+      "key": "matthews",
+      "name": "Devin A. Matthews",
+      "short": "Matthews",
+      "role": "PI",
+      "institution": "Southern Methodist University",
+      "orcid": "0000-0003-2795-5483",
+      "openalex": [
+        "A5019062687",
+        "A5151682114"
+      ],
+      "name_patterns": [
+        "\\bdevin\\b.*\\bmatthews\\b",
+        "\\bd\\.?\\s*(a\\.?\\s*)?matthews\\b",
+        "matthews,\\s*d"
+      ],
+      "scholar": "",
+      "group": "pi"
+    },
+    {
+      "key": "low",
+      "name": "Tze Meng Low",
+      "short": "Low",
+      "role": "PI",
+      "institution": "Carnegie Mellon University",
+      "orcid": "0000-0002-5179-8249",
+      "openalex": [
+        "A5019607600",
+        "A5005850249"
+      ],
+      "name_patterns": [
+        "tze\\s*meng\\s*low",
+        "low,?\\s*tze",
+        "\\bt\\.?\\s*m\\.?\\s*low\\b"
+      ],
+      "scholar": "",
+      "group": "pi"
+    },
+    {
+      "key": "myers",
+      "name": "Margaret E. Myers",
+      "short": "Myers",
+      "role": "co-PI",
+      "institution": "University of Texas at Austin",
+      "orcid": "0009-0003-8307-1591",
+      "openalex": [
+        "A5005661712"
+      ],
+      "name_patterns": [
+        "(margaret|maggie)\\b.*\\bmyers\\b",
+        "\\bm\\.?\\s*(e\\.?\\s*)?myers\\b",
+        "myers,\\s*m"
+      ],
+      "scholar": "",
+      "group": "pi"
+    },
+    {
+      "key": "parikh",
+      "name": "Devangi N. Parikh",
+      "short": "Parikh",
+      "role": "co-PI",
+      "institution": "University of Texas at Austin",
+      "orcid": "0000-0003-1893-6192",
+      "openalex": [
+        "A5021714792",
+        "A5017488160"
+      ],
+      "name_patterns": [
+        "devangi\\b.*\\bparikh\\b",
+        "\\bd\\.?\\s*(n\\.?\\s*)?parikh\\b",
+        "parikh,\\s*d"
+      ],
+      "scholar": "",
+      "group": "pi"
+    },
+    {
+      "key": "gaudel",
+      "name": "Bimal Gaudel",
+      "short": "Gaudel",
+      "group": "staff",
+      "role": "Research Software Engineer",
+      "institution": "Southern Methodist University",
+      "orcid": "0000-0003-3938-0277",
+      "openalex": [
+        "A5014530881"
+      ],
+      "name_patterns": [
+        "\\bbimal\\b.*\\bgaudel\\b",
+        "gaudel,\\s*bimal"
+      ],
+      "scholar": ""
+    },
+    {
+      "key": "vanzee",
+      "name": "Field G. Van Zee",
+      "short": "Van Zee",
+      "group": "collaborator",
+      "role": "Collaborator",
+      "institution": "",
+      "orcid": "",
+      "openalex": [
+        "A5035211620"
+      ],
+      "name_patterns": [
+        "van\\s*zee",
+        "\\bfield\\b.*\\bzee\\b"
+      ],
+      "scholar": ""
+    },
+    {
+      "key": "smith",
+      "name": "Tyler M. Smith",
+      "short": "Smith",
+      "group": "collaborator",
+      "role": "Collaborator",
+      "institution": "",
+      "orcid": "",
+      "openalex": [
+        "A5111393098",
+        "A5068182779"
+      ],
+      "name_patterns": [
+        "\\btyler\\s+(m\\.?\\s+)?smith\\b",
+        "smith,\\s*tyler"
+      ],
+      "scholar": ""
+    },
+    {
+      "key": "schatz",
+      "name": "Martin D. Schatz",
+      "short": "Schatz",
+      "group": "collaborator",
+      "role": "Collaborator",
+      "institution": "",
+      "orcid": "",
+      "openalex": [
+        "A5103044975",
+        "A5147648795"
+      ],
+      "name_patterns": [
+        "\\bmartin\\s+(d\\.?\\s+)?schatz\\b",
+        "schatz,\\s*martin"
+      ],
+      "scholar": ""
+    },
+    {
+      "key": "bientinesi",
+      "name": "Paolo Bientinesi",
+      "short": "Bientinesi",
+      "group": "collaborator",
+      "role": "Collaborator",
+      "institution": "",
+      "orcid": "",
+      "openalex": [
+        "A5048393932",
+        "A5009187993"
+      ],
+      "name_patterns": [
+        "bientinesi"
+      ],
+      "scholar": ""
+    },
+    {
+      "key": "marker",
+      "name": "Bryan Marker",
+      "short": "Marker",
+      "group": "collaborator",
+      "role": "Collaborator",
+      "institution": "",
+      "orcid": "",
+      "openalex": [
+        "A5112034603"
+      ],
+      "name_patterns": [
+        "\\bbryan\\s+marker\\b",
+        "marker,\\s*bryan"
+      ],
+      "scholar": ""
+    },
+    {
+      "key": "yu",
+      "name": "Chenhan D. Yu",
+      "short": "Yu",
+      "group": "collaborator",
+      "role": "Collaborator",
+      "institution": "",
+      "orcid": "",
+      "openalex": [
+        "A5102334657",
+        "A5159147475",
+        "A5056639012"
+      ],
+      "name_patterns": [
+        "\\bchen-?han\\s+(d\\.?\\s+)?yu\\b",
+        "\\bd\\.?\\s*yu\\s+chenhan\\b",
+        "yu,\\s*chen-?han"
+      ],
+      "scholar": ""
+    },
+    {
+      "key": "huang",
+      "name": "Jianyu Huang",
+      "short": "Huang",
+      "group": "collaborator",
+      "role": "Collaborator",
+      "institution": "",
+      "orcid": "",
+      "openalex": [
+        "A5101717259"
+      ],
+      "name_patterns": [
+        "\\bjianyu\\s+huang\\b",
+        "huang,\\s*jianyu"
+      ],
+      "scholar": ""
+    },
+    {
+      "key": "kim",
+      "name": "Kyungjoo Kim",
+      "short": "Kim",
+      "group": "collaborator",
+      "role": "Collaborator",
+      "institution": "",
+      "orcid": "",
+      "openalex": [
+        "A5076399048",
+        "A5128604919",
+        "A5130967897",
+        "A5026007872"
+      ],
+      "name_patterns": [
+        "\\bkyungjoo\\s+kim\\b",
+        "kim,\\s*kyungjoo"
+      ],
+      "scholar": ""
+    },
+    {
+      "key": "pedram",
+      "name": "Ardavan Pedram",
+      "short": "Pedram",
+      "group": "collaborator",
+      "role": "Collaborator",
+      "institution": "",
+      "orcid": "",
+      "openalex": [
+        "A5006068818"
+      ],
+      "name_patterns": [
+        "\\bardavan\\s+pedram\\b",
+        "pedram,\\s*ardavan"
+      ],
+      "scholar": ""
+    },
+    {
+      "key": "gunnels",
+      "name": "John A. Gunnels",
+      "short": "Gunnels",
+      "group": "collaborator",
+      "role": "Collaborator",
+      "institution": "",
+      "orcid": "",
+      "openalex": [
+        "A5062279572"
+      ],
+      "name_patterns": [
+        "\\bgunnels\\b"
+      ],
+      "scholar": ""
+    },
+    {
+      "key": "chan",
+      "name": "Ernie Chan",
+      "short": "Chan",
+      "group": "collaborator",
+      "role": "Collaborator",
+      "institution": "",
+      "orcid": "",
+      "openalex": [
+        "A5051174937"
+      ],
+      "name_patterns": [
+        "\\bernie\\s+chan\\b",
+        "chan,\\s*ernie"
+      ],
+      "scholar": ""
+    }
+  ]
+}

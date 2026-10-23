@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Publications - FAMLIES Project</title>
+    <meta name="description" content="Searchable database of publications by the FAMLIES PIs and co-PIs and their FLAME/BLIS collaborators.">
     <link rel="stylesheet" href="styles.css?v=2">
+    <link rel="stylesheet" href="publications-db.css?v=1">
 </head>
 <body>
     <!-- Navigation Bar -->
@@ -36,30 +38,145 @@
     </nav>
 
     <!-- Page Header -->
-    <section class="page-header publications-header">
+    <section class="page-header publications-header pp-header">
         <div class="header-content">
             <h1>Publications</h1>
-            <p>Research papers and working notes from the FAMLIES project</p>
+            <p>Papers by the FAMLIES team, and FLAME, BLIS and PLAPACK-related papers by their collaborators and frequent coauthors</p>
         </div>
     </section>
 
-    <!-- Main Content -->
-    <main>
-        <!-- Working Notes Section -->
-        <section class="content-section">
-            <div class="section-container wide">
-                <h2 class="section-title">FAMLIES Working Notes</h2>
-                <div class="publications-list fawn-publications-list"></div>
+    <main class="pp-main">
+        <!-- Search and ordering -->
+        <section class="pp-bar" aria-label="Search and ordering">
+            <label class="pp-search">
+                <span class="pp-visually-hidden">Search</span>
+                <input type="search" id="pp-q" placeholder="Search titles, authors, venues, DOIs…" autocomplete="off">
+            </label>
+            <div class="pp-order" role="group" aria-label="Order by">
+                <button type="button" class="pp-order-btn" id="pp-by-year" title="Order by year of publication; click again to reverse">Year <span class="pp-arrow" aria-hidden="true"></span></button>
+                <button type="button" class="pp-order-btn" id="pp-by-impact" title="Order by impact (citation count from OpenAlex); click again to reverse">Impact <span class="pp-arrow" aria-hidden="true"></span></button>
+            </div>
+            <div class="pp-order" role="group" aria-label="Show only">
+                <button type="button" class="pp-order-btn pp-toggle" id="pp-core" aria-pressed="false" title="Only papers by the FAMLIES PIs, co-PIs and Bimal Gaudel">Core Team</button>
+                <label class="pp-scope">
+                    <span class="pp-visually-hidden">Which publications</span>
+                    <select id="pp-scope">
+                        <option value="only" title="Papers acknowledging an NSF FAMLIES award (OAC-2513927, -2513928, -2513929)">FAMLIES only</option>
+                        <option value="related" title="Papers by van de Geijn, PLAPACK/FLAME/Elemental/ROTE/FAMLIES papers, and papers citing them">FAMLIES Related</option>
+                        <option value="all">All</option>
+                    </select>
+                </label>
+            </div>
+            <button type="button" class="pp-adv-btn" id="pp-adv-toggle" aria-expanded="false" aria-controls="pp-advanced">Advanced search <span class="pp-arrow" aria-hidden="true">▾</span></button>
+        </section>
+
+        <!-- Advanced search -->
+        <section class="pp-controls" id="pp-advanced" aria-label="Advanced search" hidden>
+            <div class="pp-row pp-filter-row pp-fields">
+                <span class="pp-label">Fields</span>
+                <label class="pp-field pp-grow">Title <input type="search" id="pp-ft" autocomplete="off"></label>
+                <label class="pp-field pp-grow">Author <input type="search" id="pp-fa" autocomplete="off"></label>
+                <label class="pp-field pp-grow">Venue <input type="search" id="pp-fv" autocomplete="off"></label>
+            </div>
+
+            <div class="pp-row pp-filter-row">
+                <span class="pp-label">FAMLIES</span>
+                <div class="pp-chips" id="pp-people-pi"></div>
+            </div>
+            <div class="pp-row pp-filter-row">
+                <span class="pp-label">FLAME/BLIS</span>
+                <div class="pp-chips" id="pp-people-collab"></div>
+            </div>
+            <div class="pp-row pp-filter-row">
+                <span class="pp-label">Coauthors</span>
+                <label class="pp-field">
+                    <span class="pp-visually-hidden">Add a frequent coauthor</span>
+                    <select id="pp-coauthor"><option value="">Add a frequent coauthor…</option></select>
+                </label>
+                <div class="pp-chips" id="pp-people-co"></div>
+            </div>
+            <div class="pp-row pp-filter-row">
+                <span class="pp-label"></span>
+                <div class="pp-seg" role="group" aria-label="People match mode">
+                    <button type="button" data-mode="any" class="active" title="Papers by any of the selected people">Any selected</button>
+                    <button type="button" data-mode="all" title="Papers coauthored by all selected people">All selected</button>
+                </div>
+                <label class="pp-check"><input type="checkbox" id="pp-joint"> Joint papers of 2+ FAMLIES PIs</label>
+            </div>
+
+            <div class="pp-row pp-filter-row">
+                <span class="pp-label">Type</span>
+                <div class="pp-chips" id="pp-types"></div>
+            </div>
+
+            <div class="pp-row pp-filter-row pp-wrap">
+                <span class="pp-label">Limit to</span>
+                <label class="pp-field">From
+                    <select id="pp-from"></select>
+                </label>
+                <label class="pp-field">To
+                    <select id="pp-to"></select>
+                </label>
+                <label class="pp-field pp-venue">Venue
+                    <select id="pp-venue"><option value="">All venues</option></select>
+                </label>
+                <label class="pp-check"><input type="checkbox" id="pp-pdf"> Has PDF</label>
+            </div>
+
+            <div class="pp-row pp-filter-row pp-wrap">
+                <span class="pp-label">Display</span>
+                <label class="pp-field">Group by
+                    <select id="pp-group">
+                        <option value="auto">Automatic</option>
+                        <option value="year">Year</option>
+                        <option value="type">Type</option>
+                        <option value="person">Person</option>
+                        <option value="venue">Venue</option>
+                        <option value="none">No grouping</option>
+                    </select>
+                </label>
+                <label class="pp-field">Sort
+                    <select id="pp-sort">
+                        <option value="new">Year, newest first</option>
+                        <option value="old">Year, oldest first</option>
+                        <option value="cited">Impact, highest first</option>
+                        <option value="cited-asc">Impact, lowest first</option>
+                        <option value="title">Title A–Z</option>
+                        <option value="venue">Venue A–Z</option>
+                        <option value="type">Type</option>
+                    </select>
+                </label>
+                <div class="pp-seg" role="group" aria-label="Display" id="pp-view">
+                    <button type="button" data-view="list" class="active">List</button>
+                    <button type="button" data-view="table">Table</button>
+                </div>
+            </div>
+
+            <div class="pp-hist" aria-label="Results per year">
+                <span class="pp-label">Matches per year <small>(click a bar to select that year)</small></span>
+                <svg id="pp-hist" role="img" aria-label="Number of matching publications per year"></svg>
+                <div class="pp-hist-tip" id="pp-hist-tip" hidden></div>
+            </div>
+
+            <div class="pp-row pp-adv-foot">
+                <button type="button" class="cite-btn" id="pp-reset">Clear all</button>
+                <button type="button" class="cite-btn" id="pp-adv-close">Close</button>
             </div>
         </section>
 
-        <!-- Related Publications -->
-        <section class="content-section">
-            <div class="section-container wide">
-                <h2 class="section-title">Related Publications from Project Members</h2>
-                <div class="publications-list related-publications-list"></div>
+        <!-- Summary and export -->
+        <div class="pp-summary">
+            <p id="pp-count" aria-live="polite"></p>
+            <div class="pp-actions">
+                <button type="button" class="cite-btn" id="pp-copy-link">Copy link to this view</button>
+                <button type="button" class="cite-btn" id="pp-bib">Download BibTeX</button>
+                <button type="button" class="cite-btn" id="pp-csv">Download CSV</button>
             </div>
-        </section>
+        </div>
+
+        <div id="pp-results"></div>
+
+        <p class="pp-note" id="pp-note"></p>
     </main>
 
     <!-- Footer -->
@@ -70,6 +187,6 @@
         </div>
     </footer>
 
-    <script src="script.js?v=2"></script>
+    <script src="publications-db.js?v=1"></script>
 </body>
 </html>

@@ -1,0 +1,610 @@
+/* ============================================
+   PI PUBLICATIONS DATABASE PAGE
+   Builds on styles.css (colors, cards, buttons).
+   ============================================ */
+
+.pp-header {
+    min-height: 26vh;
+}
+
+.pp-main {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 2rem 2rem 4rem;
+}
+
+.pp-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+}
+
+/* ---------- search bar ---------- */
+
+.pp-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.pp-bar .pp-search {
+    flex: 1 1 18rem;
+}
+
+.pp-order {
+    display: inline-flex;
+    gap: 0.5rem;
+}
+
+.pp-order-btn,
+.pp-adv-btn {
+    font: inherit;
+    font-size: 0.95rem;
+    font-weight: 600;
+    padding: 9px 16px;
+    border-radius: 6px;
+    border: 1.5px solid var(--accent-color);
+    background: var(--white);
+    color: var(--accent-color);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+}
+
+.pp-order-btn:hover,
+.pp-adv-btn:hover {
+    background: rgba(0, 102, 204, 0.08);
+}
+
+.pp-order-btn.active {
+    background: var(--accent-color);
+    color: var(--white);
+}
+
+.pp-scope select {
+    font: inherit;
+    font-size: 0.95rem;
+    font-weight: 600;
+    height: 100%;
+    padding: 9px 12px;
+    border: 1.5px solid var(--accent-color);
+    border-radius: 6px;
+    background: var(--accent-color);
+    color: var(--white);
+    cursor: pointer;
+}
+
+.pp-scope select:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 1px;
+}
+
+.pp-toggle.active::before {
+    content: "✓ ";
+}
+
+.pp-order-btn .pp-arrow {
+    display: inline-block;
+    min-width: 0.8em;
+}
+
+.pp-order-btn:not(.active) .pp-arrow {
+    visibility: hidden;
+}
+
+.pp-adv-btn {
+    border-color: var(--border-color);
+    color: var(--primary-color);
+}
+
+.pp-adv-btn[aria-expanded="true"],
+.pp-adv-btn.has-filters {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+/* ---------- advanced search panel ---------- */
+
+#pp-advanced {
+    margin-top: 1rem;
+}
+
+.pp-grow {
+    flex: 1 1 12rem;
+}
+
+.pp-field input {
+    font: inherit;
+    font-weight: 400;
+    font-size: 0.9rem;
+    padding: 5px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--white);
+    width: 100%;
+    min-width: 0;
+}
+
+.pp-field input:focus {
+    outline: 2px solid var(--accent-color);
+    outline-offset: -1px;
+}
+
+.pp-adv-foot {
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.pp-hist .pp-label small {
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 500;
+}
+
+/* ---------- controls ---------- */
+
+.pp-controls {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--light-bg);
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.pp-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.pp-wrap {
+    flex-wrap: wrap;
+    gap: 0.75rem 1.5rem;
+}
+
+.pp-filter-row {
+    flex-wrap: wrap;
+}
+
+.pp-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--secondary-color);
+    min-width: 7rem;
+}
+
+.pp-search {
+    display: block;
+    flex: 1;
+    min-width: 0;
+}
+
+.pp-search input {
+    width: 100%;
+    font: inherit;
+    font-size: 1rem;
+    padding: 10px 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--white);
+}
+
+.pp-search input:focus,
+.pp-field select:focus {
+    outline: 2px solid var(--accent-color);
+    outline-offset: -1px;
+    border-color: var(--accent-color);
+}
+
+.pp-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.pp-chip {
+    font: inherit;
+    font-size: 0.85rem;
+    padding: 5px 12px;
+    border-radius: 999px;
+    border: 1.5px solid var(--border-color);
+    background: var(--white);
+    color: var(--primary-color);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.pp-chip .pp-n {
+    color: var(--secondary-color);
+    font-size: 0.75rem;
+    margin-left: 4px;
+    font-variant-numeric: tabular-nums;
+}
+
+.pp-chip:hover {
+    border-color: var(--accent-color);
+}
+
+.pp-chip[aria-pressed="true"] {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    color: var(--white);
+}
+
+.pp-chip[aria-pressed="true"] .pp-n {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.pp-seg {
+    display: inline-flex;
+    border: 1.5px solid var(--accent-color);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.pp-seg button {
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 5px 12px;
+    border: none;
+    background: var(--white);
+    color: var(--accent-color);
+    cursor: pointer;
+}
+
+.pp-seg button + button {
+    border-left: 1.5px solid var(--accent-color);
+}
+
+.pp-seg button.active {
+    background: var(--accent-color);
+    color: var(--white);
+}
+
+.pp-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--secondary-color);
+}
+
+.pp-field select {
+    font: inherit;
+    font-weight: 400;
+    font-size: 0.9rem;
+    padding: 5px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--white);
+    color: var(--primary-color);
+    max-width: 22rem;
+}
+
+.pp-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    color: var(--secondary-color);
+    cursor: pointer;
+}
+
+/* ---------- histogram ---------- */
+
+.pp-hist {
+    position: relative;
+    margin: 0.5rem 0 0;
+}
+
+.pp-hist svg {
+    margin-top: 0.75rem;
+}
+
+.pp-hist svg {
+    display: block;
+    width: 100%;
+    height: 90px;
+    overflow: visible;
+}
+
+.pp-hist .bar {
+    fill: var(--accent-color);
+    cursor: pointer;
+}
+
+.pp-hist .bar.dim {
+    fill: #b8d0ea;
+}
+
+.pp-hist .bar:hover {
+    fill: #0052a3;
+}
+
+.pp-hist text {
+    font-size: 11px;
+    fill: var(--secondary-color);
+    font-variant-numeric: tabular-nums;
+}
+
+.pp-hist-tip {
+    position: absolute;
+    top: -6px;
+    transform: translate(-50%, -100%);
+    background: var(--primary-color);
+    color: var(--white);
+    font-size: 0.75rem;
+    padding: 3px 8px;
+    border-radius: 4px;
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+/* ---------- summary ---------- */
+
+.pp-summary em {
+    color: var(--accent-color);
+    font-style: normal;
+}
+
+.pp-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin: 1rem 0 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.pp-summary p {
+    font-size: 0.95rem;
+    color: var(--secondary-color);
+}
+
+.pp-summary strong {
+    color: var(--primary-color);
+}
+
+.pp-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+/* ---------- groups and entries (FLAME publication page style) ---------- */
+
+.pp-group + .pp-group {
+    margin-top: 1.75rem;
+}
+
+.pp-group-title {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    padding: 0.3rem 0;
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.pp-group-title span {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--secondary-color);
+}
+
+.pp-list {
+    margin: 0;
+    padding-left: 3.2rem;
+}
+
+.pp-entry {
+    margin-bottom: 0.8rem;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.pp-entry::marker {
+    color: var(--secondary-color);
+    font-variant-numeric: tabular-nums;
+}
+
+.pp-title a {
+    color: var(--accent-color);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.pp-title a:hover {
+    text-decoration: underline;
+}
+
+.pp-authors b {
+    font-weight: 700;
+}
+
+.pp-venue {
+    font-style: italic;
+}
+
+.pp-cites {
+    color: var(--secondary-color);
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.pp-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.3rem;
+}
+
+.pp-btn {
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.4;
+    padding: 1px 9px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--white);
+    color: var(--accent-color);
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.pp-btn:hover {
+    border-color: var(--accent-color);
+    background: rgba(0, 102, 204, 0.06);
+}
+
+.pp-btn[aria-expanded="true"] {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    color: var(--white);
+}
+
+.pp-entry .cite-panel {
+    margin-top: 0.4rem;
+    max-width: 60rem;
+}
+
+.pp-entry .cite-panel pre {
+    max-height: 22rem;
+    overflow: auto;
+}
+
+/* table view */
+
+.pp-table-wrap {
+    overflow-x: auto;
+}
+
+.pp-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.pp-table th,
+.pp-table td {
+    text-align: left;
+    vertical-align: top;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.pp-table th {
+    position: sticky;
+    top: 70px;
+    background: var(--white);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--secondary-color);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.pp-table th[aria-sort="ascending"]::after { content: " ▲"; }
+.pp-table th[aria-sort="descending"]::after { content: " ▼"; }
+
+.pp-table td.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.pp-table tr:hover td {
+    background: var(--light-bg);
+}
+
+.pp-table a {
+    color: var(--accent-color);
+}
+
+.pp-table .pp-title-cell {
+    min-width: 18rem;
+    font-weight: 600;
+}
+
+.pp-table .pp-title-cell a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.pp-table .pp-title-cell a:hover {
+    color: var(--accent-color);
+    text-decoration: underline;
+}
+
+.pp-empty {
+    text-align: center;
+    color: var(--secondary-color);
+    padding: 3rem 1rem;
+}
+
+.pp-more {
+    display: block;
+    margin: 1.5rem auto 0;
+}
+
+.pp-note {
+    margin-top: 3rem;
+    font-size: 0.8rem;
+    color: var(--secondary-color);
+    line-height: 1.6;
+}
+
+.pp-note a {
+    color: var(--accent-color);
+}
+
+@media (max-width: 768px) {
+    .pp-main {
+        padding: 1.25rem 1rem 3rem;
+    }
+
+    .pp-controls {
+        padding: 1rem;
+    }
+
+    .pp-label {
+        min-width: 100%;
+    }
+
+    .pp-field select {
+        max-width: 14rem;
+    }
+
+    .pp-cites {
+        margin-left: 0;
+    }
+}
+
+/* styles.css makes .cite-btn full width on small screens; keep ours compact */
+.pp-main .cite-btn {
+    width: auto;
+    flex: none;
+}
+
+/* .pp-controls sets display:flex, which would override [hidden] */
+.pp-controls[hidden] {
+    display: none;
+}
