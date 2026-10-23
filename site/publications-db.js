@@ -26,7 +26,7 @@
     };
 
     const DEFAULTS = {
-        q: '', ft: '', fa: '', fv: '', core: false, scope: 'related', people: [], mode: 'any', joint: false, types: [],
+        q: '', ft: '', fa: '', fv: '', core: true, scope: 'related', people: [], mode: 'any', joint: false, types: [],
         from: '', to: '', venue: '', pdf: false,
         group: 'auto', sort: 'new', view: 'list',
     };
@@ -98,7 +98,7 @@
         if (h.has('pi')) s.people = h.get('pi').split(',').filter((k) => PEOPLE[k]);
         if (h.get('mode') === 'all') s.mode = 'all';
         if (h.get('joint') === '1') s.joint = true;
-        if (h.get('core') === '1') s.core = true;
+        if (h.has('core')) s.core = h.get('core') !== '0';
         if (['only', 'related', 'all'].includes(h.get('scope'))) s.scope = h.get('scope');
         if (h.has('type')) s.types = h.get('type').split(',').filter((t) => TYPE_LABEL[t]);
         if (/^\d{4}$/.test(h.get('from') || '')) s.from = h.get('from');
@@ -117,7 +117,7 @@
         if (state.people.length) h.set('pi', state.people.join(','));
         if (state.mode !== 'any') h.set('mode', state.mode);
         if (state.joint) h.set('joint', '1');
-        if (state.core) h.set('core', '1');
+        if (state.core !== DEFAULTS.core) h.set('core', state.core ? '1' : '0');
         if (state.scope !== DEFAULTS.scope) h.set('scope', state.scope);
         if (state.types.length) h.set('type', state.types.join(','));
         if (state.from) h.set('from', state.from);
