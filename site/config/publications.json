@@ -8160,6 +8160,7 @@
       "citations": 2,
       "oa": true,
       "pis": [
+        "rvdg",
         "huang"
       ],
       "sources": [
@@ -8480,6 +8481,7 @@
       "url": "https://repositories.lib.utexas.edu/handle/2152/68459",
       "oa": true,
       "pis": [
+        "rvdg",
         "yu"
       ],
       "sources": [
@@ -9413,6 +9415,7 @@
       "citations": 4,
       "oa": true,
       "pis": [
+        "rvdg",
         "smith"
       ],
       "sources": [
@@ -12271,6 +12274,7 @@
       "citations": 1,
       "oa": true,
       "pis": [
+        "rvdg",
         "marker"
       ],
       "sources": [
@@ -13687,6 +13691,7 @@
       "pdf": "http://www.cs.utexas.edu/users/flame/pubs/kyungjoo_dissertation_20136.pdf",
       "oa": true,
       "pis": [
+        "rvdg",
         "kim"
       ],
       "sources": [
@@ -16553,6 +16558,7 @@
       "citations": 5,
       "oa": true,
       "pis": [
+        "rvdg",
         "chan"
       ],
       "sources": [
@@ -20226,6 +20232,7 @@
       "pdf": "http://www.cs.utexas.edu/users/pauldj/pubs/thesis.pdf",
       "oa": true,
       "pis": [
+        "rvdg",
         "bientinesi"
       ],
       "sources": [
@@ -21977,6 +21984,7 @@
       "citations": 10,
       "oa": true,
       "pis": [
+        "rvdg",
         "gunnels"
       ],
       "sources": [
@@ -23696,6 +23704,29 @@
         "flame"
       ],
       "bibtex": "@book{vandeGeijnLinear,\n  author    = {Robert A. van de Geijn},\n  title     = {{Linear Algebra: Foundations to Frontiers - Notes on Numerical Linear Algebra}},\n  publisher = {Manuscript in preparation with some video lectures (expect periodic changes)},\n  url       = {http://www.ulaff.net/},\n}",
+      "relation": "related",
+      "famlies": true
+    },
+    {
+      "key": "Pedram2013Algorithm",
+      "title": "Algorithm/Architecture Codesign of Low Power and High Performance Linear Algebra Compute Fabrics",
+      "authors": [
+        "Ardavan Pedram"
+      ],
+      "year": 2013,
+      "month": "August",
+      "type": "thesis",
+      "venue": "The University of Texas at Austin",
+      "pdf": "http://www.cs.utexas.edu/users/flame/pubs/Ardavan_Pedram_PhD.pdf",
+      "oa": true,
+      "pis": [
+        "rvdg",
+        "pedram"
+      ],
+      "sources": [
+        "flame"
+      ],
+      "bibtex": "@phdthesis{Pedram2013Algorithm,\n  author = {Ardavan Pedram},\n  title  = {{Algorithm/Architecture Codesign of Low Power and High Performance Linear Algebra Compute Fabrics}},\n  school = {The University of Texas at Austin},\n  year   = {2013},\n  month  = {August},\n  note   = {Supervised by Andreas Gerstlauer and Robert A. van de Geijn},\n}",
       "relation": "related",
       "famlies": true
     }
