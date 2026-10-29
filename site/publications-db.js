@@ -725,7 +725,7 @@
         db.publications.forEach((p) => {
             p.pis = p.pis || [];
             p.authors = p.authors || [];
-            p._hay = fold([p.title, p.authors.join(' '), p.venue, p.year, p.doi, p.arxiv, p.key].join(' '));
+            p._hay = fold([p.title, p.authors.join(' '), p.venue, p.year, p.doi, p.arxiv, p.key, TYPE_LABEL[p.type] || p.type].join(' '));
             p._t = fold(p.title);
             p._a = fold(p.authors.join(' '));
             p._v = fold(p.venue);
