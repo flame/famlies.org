@@ -13031,7 +13031,7 @@
       "pages": "301–312",
       "doi": "10.1145/2642937.2642975",
       "url": "https://doi.org/10.1145/2642937.2642975",
-      "pdf": "https://dl.acm.org/doi/pdf/10.1145/2642937.2642975",
+      "pdf": "http://www.cs.utexas.edu/users/flame/pubs/ASE2014.pdf",
       "citations": 36,
       "oa": true,
       "pis": [
@@ -13045,31 +13045,6 @@
       "bibtex": "@inproceedings{Marker2014Understanding,\n  author    = {Bryan Marker and Don S. Batory and Robert A. van de Geijn},\n  title     = {{Understanding performance stairs}},\n  booktitle = {IEEE/ACM International Conference on Automated Software Engineering (ASE)},\n  pages     = {301--312},\n  year      = {2014},\n  doi       = {10.1145/2642937.2642975},\n}",
       "openalex": "W2047926396",
       "relation": "famlies",
-      "famlies": true
-    },
-    {
-      "key": "Marker2014Understandinga",
-      "title": "Understanding Performance Stairs: Elucidating Heuristics",
-      "authors": [
-        "Bryan Marker",
-        "Don S. Batory",
-        "Robert A. van de Geijn"
-      ],
-      "year": 2014,
-      "type": "conference",
-      "venue": "29th IEEE/ACM International Conference on Automated Software Engineering (ASE 2014). Accepted.",
-      "pdf": "http://www.cs.utexas.edu/users/flame/pubs/ASE2014.pdf",
-      "oa": true,
-      "pis": [
-        "rvdg",
-        "marker",
-        "oa_a5033605569"
-      ],
-      "sources": [
-        "flame"
-      ],
-      "bibtex": "@inproceedings{Marker2014Understandinga,\n  author    = {Bryan Marker and Don S. Batory and Robert A. van de Geijn},\n  title     = {{Understanding Performance Stairs: Elucidating Heuristics}},\n  booktitle = {29th IEEE/ACM International Conference on Automated Software Engineering (ASE 2014). Accepted.},\n  year      = {2014},\n}",
-      "relation": "related",
       "famlies": true
     },
     {
@@ -13612,42 +13587,14 @@
       "bibtex": "@article{Poulson2013Elemental,\n  author  = {Jack Poulson and Bryan Marker and Robert A. van de Geijn and Jeff R. Hammond and Nichols A. Romero},\n  title   = {{Elemental}},\n  journal = {ACM Transactions on Mathematical Software},\n  volume  = {39},\n  number  = {2},\n  pages   = {1--24},\n  year    = {2013},\n  doi     = {10.1145/2427023.2427030},\n}",
       "openalex": "W2093529653",
       "relation": "related",
-      "famlies": true
-    },
-    {
-      "key": "Poulson2013Elementala",
-      "title": "Elemental: A New Framework for Distributed Memory Dense Matrix Computations",
-      "authors": [
-        "Jack Poulson",
-        "Bryan Marker",
-        "Robert A. van de Geijn",
-        "Jeff R. Hammond",
-        "Nichols A. Romero"
-      ],
-      "year": 2013,
-      "type": "journal",
-      "venue": "ACM Transactions on Mathematical Software (TOMS), 2013",
-      "url": "ACMPublications.html#Elemental",
+      "famlies": true,
       "pdf": "http://www.cs.utexas.edu/users/flame/pubs/FLAWN44_revised.pdf",
-      "oa": true,
-      "pis": [
-        "rvdg",
-        "marker",
-        "oa_a5081388506",
-        "oa_a5030891646"
-      ],
-      "sources": [
-        "flame"
-      ],
       "versions": [
         {
           "label": "FLAME Working Note #44 (2011)",
           "url": "http://www.cs.utexas.edu/users/flame/pubs/FLAWN44_revised.pdf"
         }
-      ],
-      "bibtex": "@article{Poulson2013Elementala,\n  author  = {Jack Poulson and Bryan Marker and Robert A. van de Geijn and Jeff R. Hammond and Nichols A. Romero},\n  title   = {{Elemental: A New Framework for Distributed Memory Dense Matrix Computations}},\n  journal = {ACM Transactions on Mathematical Software (TOMS), 2013},\n  year    = {2013},\n  url     = {ACMPublications.html#Elemental},\n}",
-      "relation": "related",
-      "famlies": true
+      ]
     },
     {
       "key": "LopezBlanco2013Exploring",
@@ -14298,35 +14245,6 @@
       ],
       "bibtex": "@inproceedings{Pedram2013Transforming,\n  author    = {Ardavan Pedram and John McCalpin and Andreas Gerstlauer},\n  title     = {{Transforming a Linear Algebra Core to an FFT Accelerator}},\n  booktitle = {IEEE International Conference on Application-specific Systems, Architectures and Processors (ASAP)},\n  volume    = {pp},\n  pages     = {175--184},\n  year      = {2013},\n  doi       = {10.1109/asap.2013.6567572},\n}",
       "openalex": "W2017813686",
-      "relation": "related",
-      "famlies": true
-    },
-    {
-      "key": "Marker2013value",
-      "title": "value=\"30\"> A Case Study in Mechanically Deriving Dense Linear Algebra Code",
-      "authors": [
-        "Bryan Marker",
-        "Don S. Batory",
-        "Robert A. van de Geijn"
-      ],
-      "year": 2013,
-      "type": "journal",
-      "venue": "The International Journal of High Performance Computing Applications Volume 27 Issue 4, November 2013   BibTeX ]",
-      "pis": [
-        "rvdg",
-        "marker",
-        "oa_a5033605569"
-      ],
-      "sources": [
-        "flame"
-      ],
-      "links": [
-        {
-          "label": "Abstract etc.",
-          "url": "http://hpc.sagepub.com/content/27/4/440"
-        }
-      ],
-      "bibtex": "@article{Marker2013value,\n  author  = {Bryan Marker and Don S. Batory and Robert A. van de Geijn},\n  title   = {{value=\"30\"> A Case Study in Mechanically Deriving Dense Linear Algebra Code}},\n  journal = {The International Journal of High Performance Computing Applications Volume 27 Issue 4, November 2013   BibTeX ]},\n  year    = {2013},\n}",
       "relation": "related",
       "famlies": true
     },
